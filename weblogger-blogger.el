@@ -1,18 +1,6 @@
 ;; weblogger-blogger.el
 ;;
-;; I want to break this into a couple different things, the UI,
-;; XML-RPC which has two parts
-;;                                              +--------------+
-;;                                +-----------+ |   blogger old|
-;;        +----------------+      |           | +--------------+
-;;        |                |      |  XML-RPC  |
-;;        |   UI           |      |           | +--------------+
-;;        |                |      +-----------+ |  meta        |
-;;        |                |                    +--------------+
-;;        +----------------+
-;;                                +-----------+
-;;                                | GData     |
-;;                                +-----------+
+
 (defun weblogger-api-blogger-get-content (struct)
   "Return the content for this post, optionally inserting the
 title in the first row if weblogger-blogger-firstline-title is

@@ -317,6 +317,8 @@ Set to nil for no tags.")
 (defconst weblogger-version "1.6"
   "Current version of weblogger.el")
 
+(defvar use-gdata t)
+
 (unless weblogger-entry-mode-map
   (setq weblogger-entry-mode-map
         (let ((map (copy-keymap message-mode-map))
@@ -689,10 +691,6 @@ it"
                    (weblogger-select-weblog prompt)
                    weblogger-weblog-id))))
 
-
-
-
-
 (defun weblogger-api-new-entry (struct publishp)
   "Publish a new entry (STRUCT) using the best method available."
   (run-hooks 'weblogger-new-entry-hook)
@@ -717,17 +715,13 @@ it"
   "Get a list of entries."
   (unless weblogger-api-list-entries
     (weblogger-determine-capabilities))
-  (eval `(,weblogger-api-list-entries count)))
+  (eval `(,weblogger-api-list-entries count))) ; This is an interesting means of polymorphism.
 
 (defun weblogger-api-list-categories ()
   "Get a list of categories."
   (unless weblogger-api-list-categories
     (weblogger-determine-capabilities))
   (eval `(,weblogger-api-list-categories)))
-
-
-
-
 
 (defun weblogger-select-weblog (&optional fetch)
   "Allows the user to select a weblog and returns the weblog ID.
@@ -917,12 +911,6 @@ is set, then add it to the current index and go to that entry."
       (ring-remove weblogger-entry-ring weblogger-ring-index)
       (weblogger-edit-entry
        (ring-ref weblogger-entry-ring weblogger-ring-index))))
-
-
-
-
-
-
 
 (defun weblogger-edit-entry (&optional entry)
   "Edit a entry.  If ENTRY is specified, then use that entry.
