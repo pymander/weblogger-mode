@@ -30,6 +30,7 @@
   (interactive)
   (setq weblogger-api-list-entries 'weblogger-api-gdata-list-entries)
   (setq weblogger-api-send-edits 'weblogger-api-gdata-send-edits)
+  (setq weblogger-api-new-entry 'weblogger-api-gdata-new-entry)
   )
 
 (defun weblogger-api-gdata-send-edits (struct &optional publishp)
@@ -37,7 +38,8 @@
 STRUCT.  If PUBLISHP is non-nil, publishes the entry as well."
   (message "gdata-send-edits")
   (setq last-struct struct)
-  (let* ((url        (setq last-url (cdr (assoc "url" struct))))
+  (let* ((buffer     (current-buffer))
+         (url        (setq last-url (cdr (assoc "url" struct))))
          (xml-buffer (gblogger-edit-entry url)) ;(g-app-get-entry gblogger-auth-handle url))
          (entry      (car (parse-xml-buffer xml-buffer)))
          (title      (cdr (assoc "title" struct)))
@@ -53,33 +55,51 @@ STRUCT.  If PUBLISHP is non-nil, publishes the entry as well."
       (my-change-labels entry categories)
       ;; The rest of this function is performed in `e-blog-tmp-buffer'
       ;; since the `e-blog-elisp-to-xml' did a `set-buffer'.
-      (e-blog-elisp-to-xml entry "*atom entry*")
+      ;(e-blog-elisp-to-xml entry "*atom entry*")
+      (my-elisp-to-xml entry xml-buffer)
       ;(e-blog-change-labels categories "*atom entry*")
       (g-app-publish)
       )   
+    (set-buffer buffer)
+    (set-buffer-modified-p nil)
   ))
+
+(defun my-set-unmodified ()
+  (interactive)
+  (set-buffer-modified-p nil))
 
 (defun my-change-labels (entry labels)
   (let* ((term (assoc 'term (cadar (xml-get-children last-entry 'category))))
          (labels-string (mapconcat #'identity labels " ")))
-    (setcdr term labels-string)))
-         
-         
+    (and term (setcdr term labels-string))))
 
+(defun my-elisp-to-xml (elisp buffer)
+  (set-buffer (get-buffer-create buffer))
+  (erase-buffer)
+  (xml-debug-print-internal elisp " "))
+         
 (defun weblogger-api-gdata-new-entry (struct publishp)
   "Post a new entry from STRUCT.  If PUBLISHP is non-nil, publishes the
 entry as well."
-  (xml-rpc-method-call
-   weblogger-server-url
-   'blogger.newPost
-   weblogger-blogger-app-key
-   (weblogger-weblog-id)
-   (weblogger-server-username)
-   (weblogger-server-password)
-   (weblogger-api-blogger-get-content struct)
-   publishp))
+  (message "gdata-new-entry")
+  (let* ((post-url "http://www.blogger.com/feeds/5594832128999528489/posts/default")
+         (title      (cdr (assoc "title" struct)))
+         (content    (cdr (assoc "content" struct)))
+         (categories (cdr (assoc "categories" struct)))
+         (xml-buffer (gblogger-new-entry post-url title))
+         (entry      (car (parse-xml-buffer xml-buffer)))
+         )
+    (setq last-xml-buffer xml-buffer)
+    (setq last-entry entry)
+    (e-blog-change-title entry title)
+    (e-blog-change-content entry content)
+    (my-change-labels entry categories)
+    (my-elisp-to-xml entry xml-buffer)
+    (g-app-publish)     
+    (set-buffer-modified-p nil)
+  ))
 
-(defun weblogger-api-blogger-list-categories ()
+(defun weblogger-api-gdata-list-categories ()
   "Return a list of categories that the weblog server has. (Not supported yet)"
   (setq weblogger-category-list nil))
 

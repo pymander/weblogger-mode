@@ -1,0 +1,8 @@
+* Everything that's left TODO [40%]
+  - [X] post new entries
+  - [X] edit old entries
+  - [ ] what's with the weird xhtml div thing?  That looks like
+    plumbing.
+  - [ ] need to be able to delete stuff
+  - [ ] need to move all the XML-RPC assumptions out of weblogger.el
+        
