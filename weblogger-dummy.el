@@ -44,11 +44,11 @@ specified, then the default is weblogger-max-entries-in-ring."
                  ("dateCreated" . "Dumb date")             ; Date
                  ("content" . "Dumb content")              ; 
                  ("url" . "http://thisurlisdumb.com")      ; X-Url
-                 ("texttype" . "") ; X-TextType
-                 ("categories" . ("dumb" "silly"))             ; Keywords
-                 ("mt_keywords" . ("awkward" "silent"))        ; Summary
-;                 ("trackbacks" . "http://")                ; In-Reply-To
-                 ("entry-id" . "//123jsdf")                      ; Message-Id
+;                 ("texttype" . "")                         ; X-TextType
+                 ("categories" . ("dumb" "silly"))         ; Keywords
+                 ("mt_keywords" . ("awkward" "silent"))    ; Summary
+;                 ("trackbacks" . "http://")               ; In-Reply-To
+                 ("entry-id" . "//123jsdf")                ; Message-Id
                  ("userid" . "shane.celis")                ; 
                  )))
     (setq weblogger-entry-list 

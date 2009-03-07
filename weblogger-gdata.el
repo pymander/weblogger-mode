@@ -22,26 +22,51 @@
 ;; (setq feed (e-blog-parse-xml (e-blog-fetch-bloglist)))
 ;; (e-blog-get-titles feed)
 ;; (setq entry (e-blog-get-entry "gnufool" feed))
+(require 'g)
+(require 'g-app)
+(require 'gblogger)
 
 (defun install-gdata ()
   (interactive)
   (setq weblogger-api-list-entries 'weblogger-api-gdata-list-entries)
+  (setq weblogger-api-send-edits 'weblogger-api-gdata-send-edits)
   )
 
-(defun weblogger-api-blogger-send-edits (struct &optional publishp)
+(defun weblogger-api-gdata-send-edits (struct &optional publishp)
   "Blogger API method to post edits to an entry specified by
 STRUCT.  If PUBLISHP is non-nil, publishes the entry as well."
-  (xml-rpc-method-call
-   weblogger-server-url
-   'blogger.editPost
-   weblogger-blogger-app-key
-   (cdr (assoc "entry-id" struct))
-   (weblogger-server-username)
-   (weblogger-server-password)
-   (weblogger-api-blogger-get-content struct)
-   publishp))
+  (message "gdata-send-edits")
+  (setq last-struct struct)
+  (let* ((url        (setq last-url (cdr (assoc "url" struct))))
+         (xml-buffer (gblogger-edit-entry url)) ;(g-app-get-entry gblogger-auth-handle url))
+         (entry      (car (parse-xml-buffer xml-buffer)))
+         (title      (cdr (assoc "title" struct)))
+         (content    (cdr (assoc "content" struct)))
+         (categories (cdr (assoc "categories" struct)))
+         )
+    (save-excursion
+      (setq last-xml-buffer xml-buffer)
+      (setq last-entry entry)
+      (setq last-categories categories)
+      (e-blog-change-title entry title)
+      (e-blog-change-content entry content)
+      (my-change-labels entry categories)
+      ;; The rest of this function is performed in `e-blog-tmp-buffer'
+      ;; since the `e-blog-elisp-to-xml' did a `set-buffer'.
+      (e-blog-elisp-to-xml entry "*atom entry*")
+      ;(e-blog-change-labels categories "*atom entry*")
+      (g-app-publish)
+      )   
+  ))
 
-(defun weblogger-api-blogger-new-entry (struct publishp)
+(defun my-change-labels (entry labels)
+  (let* ((term (assoc 'term (cadar (xml-get-children last-entry 'category))))
+         (labels-string (mapconcat #'identity labels " ")))
+    (setcdr term labels-string)))
+         
+         
+
+(defun weblogger-api-gdata-new-entry (struct publishp)
   "Post a new entry from STRUCT.  If PUBLISHP is non-nil, publishes the
 entry as well."
   (xml-rpc-method-call
@@ -75,9 +100,25 @@ entry as well."
     (xml-parse-region (point-min) (point-max))))
 
 (defun entry-to-struct (entry)
-  `(("title" . ,(e-blog-get-title entry))
-    ("content" . ,(e-blog-get-content entry)))
-  )
+  (let* ((links (e-blog-get-links entry))
+         (url (cadr (assoc "alternate" links)))
+         (edit-url (cadr (assoc "edit" links)))
+         (author (car (xml-get-children entry 'author)))
+         (author-name (caddar (xml-get-children author 'name)))
+         (entry-id (caddar (xml-get-children entry 'id)))
+         )
+    `(("weird-thing" . "blah")          ; Custom entries aren't
+                                        ; carried over, boo!
+      ("title" . ,(e-blog-get-title entry))
+      ("content" . ,(e-blog-get-content entry))
+      ("categories" . ,(e-blog-get-labels entry))
+      ;;("url" . ,url)
+      ("url" . ,edit-url)
+      ("authorName" . ,author-name)
+      ("entry-id" . ,entry-id)
+      ;;("mt_keywords" . ("what" "stuff"))
+      ;;("categories" . ("what2" "stuff2"))
+      )))
 
 ;; Let's just get the content and the title
 (defun weblogger-api-gdata-list-entries (&optional count)
@@ -97,4 +138,14 @@ specified, then the default is weblogger-max-entries-in-ring."
      entries
 	 ))))
 
-(provide 'weblogger-blogger)
+(defun e-blog-get-labels (entry)
+  "Given an elisp representation of an ENTRY, returns a list of
+labels for that ENTRY."
+  (let (post-labels)
+    (setq post-labels ())
+    (dolist (label (xml-get-children entry 'category))
+      (add-to-list 'post-labels
+		   (xml-get-attribute label 'term)))
+    post-labels))
+
+(provide 'weblogger-gdata)

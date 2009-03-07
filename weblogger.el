@@ -141,6 +141,8 @@
 (require 'ring)
 (require 'weblogger-meta)
 (require 'weblogger-blogger)
+(require 'weblogger-dummy)
+(require 'weblogger-gdata)
 
 (defgroup weblogger nil
   "Edit Weblogs with Emacs."
@@ -612,7 +614,8 @@ available."
 for the weblog to use."
   (interactive)
   (weblogger-save-entry nil arg)
-  (bury-buffer))
+  ;(bury-buffer)
+  )
 
 (defun weblogger-publish-entry (&optional arg)
   "Publish the current entry.  With optional argument, prompts
