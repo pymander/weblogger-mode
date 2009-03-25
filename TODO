@@ -1,4 +1,11 @@
 * TODO [73%]
+** Needs to be tested on [33%]
+   - [X] Blogger (GData)
+   - [X] Livejournal
+   - [ ] Blogger (XML-RPC)
+   - [ ] MetaWeblog
+   - [ ] Movable Type
+   - [ ] WordPress?
 ** Inherited TODOs
    - [-] Categories [50%]
      - [X] metaWeblog
@@ -20,7 +27,7 @@
     
     where url is the URL of your weblog.  This will set up your
     configuration for you if you let it.
-** Implement GData
+** Implement GData for Blogger
    - [X] post new entries
    - [X] edit old entries
    - [X] what's with the weird xhtml div thing?  That looks like
@@ -38,19 +45,19 @@
          I see two choices, either I can rip the UI and stick it into
          gblogger and only support blogger.  Or, I can integrate it
          properly into weblogger, but then I have to find some way of
-         testing it with all the xml-rpc junk.  
+         testing it with all the xml-rpc code.  
 
          I'm going to keep the xml-rpc because it works with
          livejournal.
 
    - [X] get the post url correctly
    - [X] get the right query url.
-   - [ ] stick it into github
+   - [X] stick it into github
    - [ ] announce
    - [X] test it with an xmlrpc blog to make sure it still works
          I'm testing it with my livejournal account, and it does work.
    - [X] drafts aren't being pulled up.  fix it. 
-   - [ ] fix the documentation
-   - [ ] Need to fix all the my-* functions to become
+   - [X] fix the documentation
+   - [X] Need to fix all the my-* functions to become
      weblogger-gdata-* functions.
          

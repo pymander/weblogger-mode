@@ -33,6 +33,10 @@
 ;; If you don't yet have a weblog, you can set one up for free on
 ;; various services mentioned above.
 ;;
+;;; Download:
+;;
+;; $ git clone git://github.com/secelis/weblogger.git
+;;
 ;;; Installation:
 ;;
 ;; I use the following commands in my .emacs file to load up

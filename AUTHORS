@@ -3,8 +3,6 @@
    Original author of blogger.el it seems.  
 ** Simon Kittle
    Inspired the original author's implementation.
-** Wickersheimer Jeremy 
-   
 ** Gabriel Saldana 
    This code was originally based on Simon Kittle's blogger.el
    (http://www.tswoam.co.uk/files/blogger.el.txt), but where his
@@ -25,6 +23,10 @@
     you update.
   - Can "scroll" through entries on the weblog server and edit them.
   - Many other features.
+** Wickersheimer Jeremy 
+   Patched up weblogger and added support for categories.
+
+   http://jwickers.wordpress.com/2007/09/20/webloggerel-enhanced/   
 
 ** Shane Celis <shane (at) gnufoo (dot) org> 
    Updated Blogger interface to use GData implementation.

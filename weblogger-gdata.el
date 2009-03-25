@@ -29,6 +29,22 @@
   <app:draft>yes</app:draft>
 </app:control>")
 
+;; defsubst is an inline function.
+
+(defun gblogger-auth-handle ()
+  (weblogger-cache 'gdata-auth-handle
+                   (progn
+                     (gblogger-sign-in)
+                     gblogger-auth-handle)))
+;;; I really have no good explanation for why I'm not able to make this
+;;; work without gblogger directly.
+
+;;                    (let ((handle (make-g-auth :server "blogger"
+;;                                               :email (weblogger-server-username)
+;;                                               :password (weblogger-server-password))))
+;;                      (g-authenticate handle)
+;;                      handle)))
+
 (defun weblogger-install-gdata ()
   (interactive)
   (setq weblogger-api-list-entries 'weblogger-api-gdata-list-entries
@@ -52,11 +68,11 @@ STRUCT.  If PUBLISHP is non-nil, publishes the entry as well."
          (categories (cdr (assoc "categories" struct)))
          )
     (save-excursion
-      (my-change-title entry title)
-      (my-change-content entry content)
-      (my-change-labels entry categories)
-      (my-set-draft entry (if publishp "no" "yes"))
-      (my-elisp-to-xml entry xml-buffer)
+      (weblogger-gdata-change-title entry title)
+      (weblogger-gdata-change-content entry content)
+      (weblogger-gdata-change-labels entry categories)
+      (weblogger-gdata-set-draft entry (if publishp "no" "yes"))
+      (weblogger-gdata-elisp-to-xml entry xml-buffer)
       (set-buffer xml-buffer)
       (g-app-publish)
       )   
@@ -64,38 +80,38 @@ STRUCT.  If PUBLISHP is non-nil, publishes the entry as well."
     (set-buffer-modified-p nil)
   ))
 
-(defun my-set-unmodified ()
+(defun weblogger-gdata-set-unmodified ()
   (interactive)
   (set-buffer-modified-p nil))
 
-(defun my-change-labels (entry labels)
+(defun weblogger-gdata-change-labels (entry labels)
   (let* ((term (assoc 'term (cadar (xml-get-children last-entry 'category))))
          (labels-string (mapconcat #'identity labels ", ")))
     (and term (setcdr term labels-string))))
 
-(defun my-xml-parse-string (string)
+(defun weblogger-gdata-xml-parse-string (string)
   (with-temp-buffer
     (insert string)
     (xml-parse-region (point-min) (point-max))))
 
-(defun my-change-content (entry content)
+(defun weblogger-gdata-change-content (entry content)
   "Accepts the lispml entry and a string of content."
   (let* ((old-content (cdar (xml-get-children entry 'content)))
-         (lispml (or (my-xml-parse-string content) (list content)))
+         (lispml (or (weblogger-gdata-xml-parse-string content) (list content)))
          )
     (setcdr old-content lispml)))
 
-(defun my-elisp-to-xml (elisp buffer)
+(defun weblogger-gdata-elisp-to-xml (elisp buffer)
   (save-excursion
     (set-buffer (get-buffer-create buffer))
     (erase-buffer)
     (xml-debug-print-internal elisp " ")))
 
-(defun my-get-post-url ()
-  (let* ((buffer (g-app-get-entry gblogger-auth-handle gblogger-base-url))
+(defun weblogger-gdata-get-post-url ()
+  (let* ((buffer (g-app-get-entry (gblogger-auth-handle) gblogger-base-url))
          (feed (car (parse-xml-buffer buffer)))
          (entries (xml-get-children feed 'entry))
-         (links (my-get-links (car entries))))
+         (links (weblogger-gdata-get-links (car entries))))
     (if (> (length entries) 1)
         (message "can't handle multiple blogger blogs yet"))
     (cdr (assoc "post" links))))
@@ -103,7 +119,7 @@ STRUCT.  If PUBLISHP is non-nil, publishes the entry as well."
 (defun weblogger-api-gdata-new-entry (struct publishp)
   "Post a new entry from STRUCT.  If PUBLISHP is non-nil, publishes the
 entry as well."
-  (let* ((post-url   (my-get-post-url))
+  (let* ((post-url   (weblogger-gdata-get-post-url))
          (title      (cdr (assoc "title" struct)))
          (content    (cdr (assoc "content" struct)))
          (categories (cdr (assoc "categories" struct)))
@@ -111,11 +127,11 @@ entry as well."
          (entry      (car (parse-xml-buffer xml-buffer))))
     (setq last-xml-buffer xml-buffer)
     (setq last-entry entry)
-    (my-change-title entry title)
-    (my-change-content entry content)
-    (my-change-labels entry categories)
-    (my-set-draft entry (if publishp "no" "yes"))
-    (my-elisp-to-xml entry xml-buffer)
+    (weblogger-gdata-change-title entry title)
+    (weblogger-gdata-change-content entry content)
+    (weblogger-gdata-change-labels entry categories)
+    (weblogger-gdata-set-draft entry (if publishp "no" "yes"))
+    (weblogger-gdata-elisp-to-xml entry xml-buffer)
     (g-app-publish)     
     (set-buffer-modified-p nil)
   ))
@@ -131,7 +147,7 @@ entry as well."
     (xml-parse-region (point-min) (point-max))))
 
 (defun entry-to-struct (entry)
-  (let* ((links (my-get-links entry))
+  (let* ((links (weblogger-gdata-get-links entry))
          (url (cdr (assoc "alternate" links)))
          (edit-url (cdr (assoc "edit" links)))
          (author (car (xml-get-children entry 'author)))
@@ -140,13 +156,13 @@ entry as well."
          )
     `(("weird-thing" . "blah")          ; Custom entries aren't
                                         ; carried over, boo!
-      ("title" . ,(my-get-title entry))
-      ("content" . ,(my-get-content entry))
-      ("categories" . ,(my-get-labels entry))
+      ("title" . ,(weblogger-gdata-get-title entry))
+      ("content" . ,(weblogger-gdata-get-content entry))
+      ("categories" . ,(weblogger-gdata-get-labels entry))
       ("url" . ,edit-url)
       ("authorName" . ,author-name)
       ("entry-id" . ,entry-id)
-      ("dateCreated" . ,(my-get-date entry))
+      ("dateCreated" . ,(weblogger-gdata-get-date entry))
       )))
 
 (defun weblogger-api-gdata-weblog-alist ()
@@ -158,7 +174,7 @@ entry as well."
     ('blogName' . 'geek love')
     ('blogid' . '_geek_love')))"
   (let* ((url weblogger-gdata-fetch-bloglist-url)
-         (xml-buffer (g-app-get-entry gblogger-auth-handle url))
+         (xml-buffer (g-app-get-entry (gblogger-auth-handle) url))
          (lispml (parse-xml-buffer xml-buffer))
          (entries (xml-get-children (xml-node-name lispml) 'entry))
          )
@@ -166,7 +182,7 @@ entry as well."
 
 (defun weblogger-gdata-entry-to-weblog-alist (entry)
   (let* ((title (car (xml-node-children (car (xml-get-children entry 'title)))))
-         (url (cdr (assoc "alternate" (my-get-links entry))))
+         (url (cdr (assoc "alternate" (weblogger-gdata-get-links entry))))
          (id (nth 2 (car (xml-get-children entry 'id))))
          (better-id (replace-regexp-in-string ".*-\\([0-9]*\\)$" "\\1" id))
          )
@@ -181,7 +197,7 @@ specified, then the default is weblogger-max-entries-in-ring."
   (let* ((url (format weblogger-gdata-fetch-entries-url-format 
                       (weblogger-weblog-id)))
          (url* (if count (format "%s?max-results=%d" url count) url))
-         (xml-buffer (g-app-get-entry gblogger-auth-handle url*))
+         (xml-buffer (g-app-get-entry (gblogger-auth-handle) url*))
          (lispml (parse-xml-buffer xml-buffer))
          (entries (xml-get-children (xml-node-name lispml) 'entry))
          )
@@ -196,9 +212,9 @@ specified, then the default is weblogger-max-entries-in-ring."
   (let* ((url (cdr (assoc "url" struct)))
          )
     (save-excursion
-      (g-app-delete-entry gblogger-auth-handle url))))
+      (g-app-delete-entry (gblogger-auth-handle) url))))
 
-(defun my-change-title (entry title)
+(defun weblogger-gdata-change-title (entry title)
   "Given an elisp representation of an entry and a title, will
 modify the title to given title."
   (setcar (xml-node-children
@@ -206,19 +222,19 @@ modify the title to given title."
             (xml-get-children entry 'title)))
           title))
 
-(defun my-get-links (entry)
+(defun weblogger-gdata-get-links (entry)
   "Given an elisp representation of an ENTRY, returns a list of
 the links associated with that ENTRY."
   (let* ((links (xml-get-children entry 'link))
          )
     (mapcar (lambda (link) 
-              (cons (my-strip-schema (xml-get-attribute link 'rel))
+              (cons (weblogger-gdata-strip-schema (xml-get-attribute link 'rel))
                     (xml-get-attribute link 'href))) links)))
 
-(defun my-strip-schema (url)
+(defun weblogger-gdata-strip-schema (url)
   (replace-regexp-in-string ".*#" "" url))
 
-(defun my-get-content (entry)
+(defun weblogger-gdata-get-content (entry)
   "Given an elisp representation of an ENTRY, returns the content
 for that ENTRY."
   (nth 0
@@ -226,14 +242,14 @@ for that ENTRY."
         (xml-node-name
          (xml-get-children entry 'content)))))
 
-(defun my-get-labels (entry)
+(defun weblogger-gdata-get-labels (entry)
   "Given an elisp representation of an ENTRY, returns a list of
 labels for that ENTRY."
   (let ((categories (xml-get-children entry 'category)))
     (mapcar (lambda (label) (xml-get-attribute label 'term))
             categories)))
 
-(defun my-get-title (entry)
+(defun weblogger-gdata-get-title (entry)
   "Given an  elisp representation of an ENTRY,  returns the title
 of that ENTRY."
   (let* ((title-tag (xml-get-children entry 'title))
@@ -242,27 +258,27 @@ of that ENTRY."
                       (xml-node-name title-tag)))))
     title))
 
-(defun my-get-draft (entry)
+(defun weblogger-gdata-get-draft (entry)
   (let* ((control (car (xml-get-children entry 'app:control)))
          (draft   (car (xml-get-children control 'app:draft))))
     (string-equal "yes" (caddr draft))))
 
-(defun my-set-draft (entry string &optional recur)
+(defun weblogger-gdata-set-draft (entry string &optional recur)
   (let* ((control (car (xml-get-children entry 'app:control)))
          (draft   (car (xml-get-children control 'app:draft))))
     (if (cddr draft)
         (setcar (cddr draft) string)
         (if (string-equal "no" string)
             nil ; good, we don't need to do anything.
-            (let* ((draft-xml (my-xml-parse-string weblogger-gdata-draft-tag)))
+            (let* ((draft-xml (weblogger-gdata-xml-parse-string weblogger-gdata-draft-tag)))
               (if recur
                   (error "unable to add the draft tag")
-                  (my-set-draft (nconc entry draft-xml) string t)))))))
+                  (weblogger-gdata-set-draft (nconc entry draft-xml) string t)))))))
 
-(defun my-is-draft (entry)
-  (string-equal "yes" (my-get-draft entry)))
+(defun weblogger-gdata-is-draft (entry)
+  (string-equal "yes" (weblogger-gdata-get-draft entry)))
 
-(defun my-get-date (entry)
+(defun weblogger-gdata-get-date (entry)
   (let* ((published (car (xml-get-children entry 'published))))
     (caddr published)))
 
