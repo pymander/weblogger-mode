@@ -16,7 +16,7 @@ set."
   "Blogger API method to post edits to an entry specified by
 STRUCT.  If PUBLISHP is non-nil, publishes the entry as well."
   (xml-rpc-method-call
-   weblogger-server-url
+   (weblogger-server-url)
    'blogger.editPost
    weblogger-blogger-app-key
    (cdr (assoc "entry-id" struct))
@@ -29,7 +29,7 @@ STRUCT.  If PUBLISHP is non-nil, publishes the entry as well."
   "Post a new entry from STRUCT.  If PUBLISHP is non-nil, publishes the
 entry as well."
   (xml-rpc-method-call
-   weblogger-server-url
+   (weblogger-server-url)
    'blogger.newPost
    weblogger-blogger-app-key
    (weblogger-weblog-id)
@@ -52,7 +52,7 @@ specified, then the default is weblogger-max-entries-in-ring."
 	   (ring-insert-at-beginning weblogger-entry-ring
 				     (weblogger-response-to-struct entry)))
 	 (xml-rpc-method-call
-	  weblogger-server-url
+	  (weblogger-server-url)
 	  'blogger.getRecentPosts
 	  weblogger-blogger-app-key
 	  (weblogger-weblog-id)
