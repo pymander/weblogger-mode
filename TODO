@@ -19,11 +19,14 @@
         testing it with all the xml-rpc junk.  
 
         I'm leaning towards just ripping out the UI from weblogger.
+        Nope, I'm going to keep it all.
 
   - [X] get the post url correctly
+  - [ ] 
   - [ ] get the query url right.
   - [ ] stick it into github
   - [ ] announce
   - [ ] test it with an xmlrpc blog to make sure it still works
+        I'm testing it with my livejournal account, and it does work.
   - [X] drafts are being pulled up. 
-
+        

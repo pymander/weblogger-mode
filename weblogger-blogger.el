@@ -1,11 +1,22 @@
 ;; weblogger-blogger.el
 ;;
 
+(defun weblogger-install-blogger ()
+  (interactive)
+  (setq weblogger-api-send-edits 'weblogger-api-blogger-send-edits
+        weblogger-api-new-entry 'weblogger-api-blogger-new-entry
+        weblogger-api-list-categories 'weblogger-api-blogger-list-categories
+        weblogger-api-list-entries 'weblogger-api-blogger-list-entries
+        weblogger-api-delete-entry 'weblogger-api-blogger-delete-entry
+        weblogger-api-weblog-alist 'weblogger-api-blogger-weblog-alist
+        weblogger-api-server-userid 'weblogger-api-blogger-server-userid
+        ))
+
 (defun weblogger-api-blogger-get-content (struct)
   "Return the content for this post, optionally inserting the
 title in the first row if weblogger-blogger-firstline-title is
 set."
-  (if weblogger-blogger-firstline-title
+  (if (weblogger-blogger-firstline-title)
       (concat "<title>"
 	      (cdr (assoc "title" struct))
 	      "</title>\n"
@@ -59,5 +70,40 @@ specified, then the default is weblogger-max-entries-in-ring."
 	  (weblogger-server-username)
 	  (weblogger-server-password)
 	  (or count weblogger-max-entries-in-ring)))))
+
+(defun weblogger-api-blogger-delete-entry (struct)
+  (let* ((msgid (cdr (assoc "entry-id" struct))))
+    (xml-rpc-method-call
+     (weblogger-server-url)
+     'blogger.deletePost
+     weblogger-blogger-app-key
+     msgid
+     (weblogger-server-username)
+     (weblogger-server-password)
+     t)))
+
+(defun weblogger-api-blogger-weblog-alist (&optional fetch)
+  "Returns the alist of weblogs owned by a user on the server."
+  (when fetch
+    (weblogger-cache-invalidate 'weblog-alist))
+  (weblogger-cache 'weblog-alist
+                   (xml-rpc-method-call 
+                    (weblogger-server-url)
+                    'blogger.getUsersBlogs
+                    weblogger-blogger-app-key
+                    (weblogger-server-username)
+                    (weblogger-server-password))))
+
+(defun weblogger-api-blogger-server-userid ()
+  "Get information on user."
+  (weblogger-cache 'server-userid
+                   (cdr
+                    (assoc "userid"
+                           (xml-rpc-method-call
+                            (weblogger-server-url)
+                            'blogger.getUserInfo
+                            weblogger-blogger-app-key
+                            (weblogger-server-username)
+                            (weblogger-server-password))))))
 
 (provide 'weblogger-blogger)

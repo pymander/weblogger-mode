@@ -26,18 +26,22 @@
 (require 'g-app)
 (require 'gblogger)
 
+(defvar weblogger-gdata-fetch-bloglist-url "http://www.blogger.com/feeds/default/blogs")
+(defvar weblogger-gdata-fetch-entries-url-format "http://www.blogger.com/feeds/%s/posts/full")
 (defvar weblogger-gdata-draft-tag 
 "<app:control xmlns:app='http://www.w3.org/2007/app'>
   <app:draft>yes</app:draft>
 </app:control>")
 
-(defun install-gdata ()
+(defun weblogger-install-gdata ()
   (interactive)
   (setq weblogger-api-list-entries 'weblogger-api-gdata-list-entries
         weblogger-api-send-edits   'weblogger-api-gdata-send-edits
         weblogger-api-new-entry    'weblogger-api-gdata-new-entry
-        weblogger-api-delete-entry 'weblogger-api-gdata-delete-entry)
-  )
+        weblogger-api-delete-entry 'weblogger-api-gdata-delete-entry
+        weblogger-api-list-categories nil
+        weblogger-api-weblog-alist  'weblogger-api-gdata-weblog-alist
+        weblogger-api-server-userid   nil))
 
 (defun weblogger-api-gdata-send-edits (struct &optional publishp)
   "Blogger API method to post edits to an entry specified by
@@ -152,11 +156,41 @@ entry as well."
       ("dateCreated" . ,(my-get-date entry))
       )))
 
+(defun weblogger-api-gdata-weblog-alist ()
+  "We need to return something that looks like this:
+  ((('url' . 'http://semios.livejournal.com/')
+    ('blogName' . 'Shane')
+    ('blogid' . 'semios'))
+  (('url' . 'http://community.livejournal.com/_geek_love/')
+    ('blogName' . 'geek love')
+    ('blogid' . '_geek_love')))"
+  (let* ((url weblogger-gdata-fetch-bloglist-url)
+         (xml-buffer (g-app-get-entry gblogger-auth-handle url))
+         (lispml (parse-xml-buffer xml-buffer))
+         (entries (xml-get-children (xml-node-name lispml) 'entry))
+         )
+    (mapcar 'weblogger-gdata-entry-to-weblog-alist entries)
+    ;entries
+    ))
+
+(defun weblogger-gdata-entry-to-weblog-alist (entry)
+  (let* ((title (car (xml-node-children (car (xml-get-children entry 'title)))))
+         (url (cdr (assoc "alternate" (my-get-links entry))))
+         (id (nth 2 (car (xml-get-children entry 'id))))
+         (better-id (replace-regexp-in-string ".*-\\([0-9]*\\)$" "\\1" id))
+         )
+    `(("blogName" . ,title)
+      ("url" . ,url)
+      ("blogid" .,better-id)
+      )))
+
 (defun weblogger-api-gdata-list-entries (&optional count)
   "Return a list of entries that the weblog server has.  COUNT specifies
 how many of the most recent entries to get.  If COUNT is not
 specified, then the default is weblogger-max-entries-in-ring."
-  (let* ((url "http://gnufool.blogspot.com/feeds/posts/full") ; XXX - fix url
+  (let* ((url (format weblogger-gdata-fetch-entries-url-format (weblogger-weblog-id)))
+                                        ;"http://www.blogger.com/feeds/5594832128999528489/posts/default")
+           ;"http://gnufool.blogspot.com/feeds/posts/full") ; XXX - fix url
          (url* (if count (format "%s?max-results=%d" url count) url))
          (xml-buffer (g-app-get-entry gblogger-auth-handle url*))
          (lispml (parse-xml-buffer xml-buffer))
@@ -170,7 +204,6 @@ specified, then the default is weblogger-max-entries-in-ring."
      entries))))
 
 (defun weblogger-api-gdata-delete-entry (struct)
-  (message "gdata-delete-entry")
   (let* ((url (cdr (assoc "url" struct)))
          )
     (save-excursion

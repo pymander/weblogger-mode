@@ -16,6 +16,7 @@
   (interactive)
   (setq weblogger-api-send-edits 'weblogger-api-blogger-send-edits
         weblogger-api-new-entry 'weblogger-api-blogger-new-entry
+        weblogger-api-delete-entry 'weblogger-api-blogger-delete-entry
         weblogger-api-list-categories 'weblogger-api-blogger-list-categories
         weblogger-api-list-entries 'weblogger-api-blogger-list-entries
         ))

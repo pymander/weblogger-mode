@@ -37,8 +37,7 @@
 ;;; Starting Out:
 ;;
 ;; If you don't yet have a weblog, you can set one up for free on
-;; various services.  (I suggest OpenWeblog.com, but then I run that
-;; site :) )
+;; various services.  
 ;;
 ;; To set up your profile:
 ;;
@@ -153,20 +152,9 @@
 (defvar weblogger-blogger-app-key "07C72E6970E0FBA5DE21BA9F4800C44534C19870"
   "The appkey to send to weblog server.  Generally this shouldn't be changed.")
 
-;; Can I get rid of this?  Shouldn't this be in configure?
-;; (defcustom weblogger-server-username "nope"
-;;   "Your weblog server username.  You will be prompted if this is left nil."
-;;   :group 'weblogger
-;;   :type 'string)
-
-;; (defcustom weblogger-server-password "nope"
-;;   "Your password.  You will be prompted if this is left nil."
-;;   :group 'weblogger
-;;   :type 'string)
-
 (defcustom weblogger-servers
   '(
-    (blogger     "Blogger (GData)" gdata nil)
+    (blogger     "Blogger (GData)" (gdata "http://www.blogger.com/feeds/") nil)
     (blogger-old "Blogger (XMLRPC) old" 
      (xmlrpc "http://www2.blogger.com/api") t)
     (movabletype "Movable Type" 
@@ -179,7 +167,8 @@
      (xmlrpc "") nil)
     (livejournal "Livejournal (Blogger API)" 
      (xmlrpc "http://www.livejournal.com/interface/blogger") t)
-    ;(livejournal "Livejournal" (xmlrpc "http://www.livejournal.com/interface/xmlrpc"))
+    ;; The livejournal XMLRPC API is not supported yet.
+    ;;(livejournal "Livejournal" (xmlrpc "http://www.livejournal.com/interface/xmlrpc"))
     )
   "what"
   :type '(repeat (list 
@@ -187,27 +176,12 @@
                   (string :tag "Title String")
                   (choice :tag "RPC Type"
                    (list :tag "XML-RPC" (const xmlrpc) (string :tag "URL"))
+                   (list :tag "GData" (const gdata) (string :tag "URL")))
                    ;(list :tag "GData" (const gdata))
-                   (const :tag "GData" gdata))
+                  ;(const :tag "GData" gdata))
                   (boolean :tag "title in first line")
                    ))
   :group 'weblogger)
-
-;; XXX add all the other blogs here server things here.
-;; Isn't this in config?
-;; (defcustom weblogger-server-url "http://www.openweblog.com/xmlrpc/"
-;;   "Server you want to use.  If this is an OpenWeblog.com site, leave this
-;; at the default.  Otherwise, you will need to change it."
-;;   :group 'weblogger
-;;  :type 'string)
-
-;; Isn't this in config?
-;; (defcustom weblogger-weblog-id nil
-;;   "Your weblog ID.  For many weblog servers, you can leave this
-;; nil and weblogger.el will prompt you for the weblog.  If it is a
-;; Manila site, you need to provide the URL of your site."
-;;   :group 'weblogger
-;;   :type 'string)
 
 (defcustom weblogger-max-entries-in-ring 20
   "Maximum number of entries that will be retrieved from the
@@ -228,19 +202,21 @@ server.  There may be a server-side limitation to this number."
   :group 'weblogger
   :type 'boolean)
 
-(defcustom weblogger-config-alist ()
-  "Alist of possible configurations."
+(defcustom weblogger-config-alist '("myblog" (("username" . "your username")
+                                              ("server" . "blogger")
+                                              ("weblog" . "Weblog name")))
+  "Alist of configurations."
   :group 'weblogger
-  :type '(alist :key-type string :value-type (alist :key-type string :value-type string :options ("username" "server-url" "weblog"))))
+  :type '(alist :key-type string :value-type (alist :key-type string :value-type string :options ("username" "server-url" "weblog" "server"))))
 
-(defcustom weblogger-blogger-firstline-title nil
-  "Look for the title in the first line surrounded by <title>
-tags when using the Blogger API."
-  :group 'weblogger
-  :type 'boolean)
+;; (defcustom weblogger-blogger-firstline-title nil
+;;   "Look for the title in the first line surrounded by <title>
+;; tags when using the Blogger API."
+;;   :group 'weblogger
+;;   :type 'boolean)
 
 (defcustom weblogger-config-name "default"
-  "Name of the current configuration."
+  "Name of the default configuration."
   :group 'weblogger
   :type 'string)
 
@@ -257,32 +233,32 @@ order, with newest first.")
 (defvar weblogger-tag-list nil
   "List of tags that we know about.")
 
-(defvar weblogger-server-userid nil
-  "Server-side ID of logged in user.")
-
 (defvar *weblogger-entry* nil
   "The buffer where we compose entries")
 
 (defvar weblogger-entry-mode-hook nil
   "Hook to run after starting up weblogger mode.")
 
-(defvar weblogger-start-edit-entry-hook 
+(defcustom weblogger-start-edit-entry-hook 
   (lambda ()
     (message-goto-body)
     (replace-string "\r" "" nil (point) (point-max)))
-  "Hook to run after loading an entry in buffer for editting.")
+  "Hook to run after loading an entry in buffer for editting."
+  :group 'weblogger)
 
-(defvar weblogger-new-entry-hook '(weblogger-ping-weblogs)
+(defcustom weblogger-new-entry-hook '(weblogger-ping-weblogs)
   "Hook to run after sending a new entry.  Typically, this is
 where you would put weblogger-ping-weblogs to let weblog
-aggregators know that you have updated.")
+aggregators know that you have updated."
+  :group 'weblogger)
 
 ;; There are a lot of caches here I'd like to do away with.
 (defvar weblogger-cache nil
   "Holds a cache of all the values associated with the current server.")
 
-(defvar weblogger-edit-entry-hook nil
-  "Hook to run after updating an entry.")
+(defcustom weblogger-edit-entry-hook nil
+  "Hook to run after updating an entry."
+  :group 'weblogger)
 
 (defvar weblogger-entry-mode-map nil
   "Keymap for weblogger-entry-mode.")
@@ -296,8 +272,8 @@ aggregators know that you have updated.")
 (defvar weblogger-category-ring nil
   "Ring that holds all the categories.")
 
-(defvar weblogger-tag-ring nil
-  "Ring that holds all the tags.")
+;; (defvar weblogger-tag-ring nil
+;;   "Ring that holds all the tags.")
 
 (defvar weblogger-ring-index 0
   "Pointer to the index on the ring")
@@ -339,7 +315,7 @@ aggregators know that you have updated.")
   "The default title to use when making an entry.  This is added
 if your weblog server supports titles on entries but you haven't
 set one.  Set to \"\" for no title."
-  :type string
+  :type 'string
   :group 'weblogger)
 
 (defcustom weblogger-default-categories nil
@@ -363,11 +339,9 @@ set one.  Set to nil for no tags."
 (defvar weblogger-api-list-entries nil)
 (defvar weblogger-api-list-categories nil)
 (defvar weblogger-api-delete-entry nil)
+(defvar weblogger-api-weblog-alist nil)
+(defvar weblogger-api-server-userid nil)
 
-(defvar weblogger-weblog-alist nil
-  "Weblogs the user can use on the server.")
-(defvar weblogger-texttype-alist nil
-  "Texttypes supported by the server.")
 (defvar menu-bar-weblogger-menu nil)
 
 (defconst weblogger-version "1.6"
@@ -392,7 +366,7 @@ set one.  Set to nil for no tags."
           (define-key template-map "m" 'weblogger-edit-main-template)
           (define-key template-map "a" 'weblogger-edit-archive-template)
           (define-key map "\C-c\C-t" template-map)
-          (define-key map "\C-c\C-o" 'weblogger-change-server)
+;          (define-key map "\C-c\C-o" 'weblogger-change-server)
           (define-key map "\C-c\C-w" 'weblogger-change-weblog)
           (define-key map "\C-c\C-u" 'weblogger-change-user)
           map)))
@@ -418,10 +392,10 @@ set one.  Set to nil for no tags."
         ["--" nil nil]
         ["Change Weblog"    weblogger-change-weblog t])))
 
-(defun weblogger-get-cache (key)
+(defun weblogger-cache-get (key)
   (cdr (assoc key weblogger-cache)))
 
-(defun weblogger-set-cache (key value)
+(defun weblogger-cache-set (key value)
   (let ((cell (assoc key weblogger-cache)))
     (if cell
         (setcdr cell value)
@@ -429,12 +403,31 @@ set one.  Set to nil for no tags."
         value
         )))
 
+(defun weblogger-cache-invalidate (key)
+  (setq weblogger-cache (assq-delete-all key weblogger-cache)))
+
 (defmacro weblogger-cache (key &rest body)
   "We see if the value is already cached.  If not we run body,
 and consider its return value to be the cacheable value.  This
 way we can invalidate the cache very easily."
-  `(or (weblogger-get-cache ,key)
-       (weblogger-set-cache ,key (progn ,@body))))
+  `(or (weblogger-cache-get ,key)
+       (weblogger-cache-set ,key (progn ,@body))))
+
+(defun weblogger-config-server (&optional key)
+  (let* ((keys '(symbol name rpc title))
+         (index (position key keys))
+         (server-sym (read (weblogger-config-param weblogger-config-name "server")))
+         (server (assoc server-sym weblogger-servers)))
+    (if (eq key 'url)
+        (nth 1 (nth (position 'rpc keys) server))
+        (if key
+            (and index (nth index server))
+            server))))
+
+(defun weblogger-blogger-firstline-title ()
+  "Look for the title in the first line surrounded by <title>
+tags when using the Blogger API."
+  (weblogger-config-server title))
 
 (defun weblogger-select-configuration (config)
   "Select a previously saved configuration."
@@ -449,14 +442,16 @@ way we can invalidate the cache very easily."
                                          (completing-read 
                                           "Config Name: " configs nil t))))
                             conf)))
+  ;(unless (string-equal weblogger-config-name config)
+    (setq weblogger-cache nil);)
   (setq weblogger-config-name config)
   (weblogger-determine-capabilities)
-  (weblogger-weblog-alist t))
+  (weblogger-api-weblog-alist t))
 
 (defun weblogger-setup-weblog ()
   "Create a profile for a weblog."
   (interactive)
-  (weblogger-change-server)
+  ;(weblogger-change-server)
   (let ((user   (weblogger-server-username t))
         (pass   (weblogger-server-password t))
         (weblog (weblogger-weblog-id       t)))
@@ -488,14 +483,6 @@ the filename in weblogger-config-file."
   (customize-save-variable 'weblogger-config-alist
                            weblogger-config-alist))
 
-;; The interactive needs to be rewritten.
-(defun weblogger-change-server ()
-  "Change the server-url."
-  (interactive)
-  (setq weblogger-server-url
-        (read-from-minibuffer "Server Endpoint (URL): " weblogger-server-url))
-  (weblogger-determine-capabilities))
-
 (defun weblogger-change-user ()
   "Change username and password."
   (interactive)
@@ -507,8 +494,7 @@ the filename in weblogger-config-file."
   (interactive)
   (let ((point-save (point)))
     (weblogger-weblog-id t)
-    (message-remove-header "Weblog") ; I changed this from "Newsgroup"
-                                        ; to "Weblog"?
+    (message-remove-header "Weblog") 
     (message-add-header (concat "Weblog: " 
                                 (weblogger-weblog-name-from-id 
                                  (weblogger-weblog-id))))
@@ -654,7 +640,6 @@ available."
                     (list "Weblog"
                           (concat (weblogger-weblog-name-from-id 
                                    (weblogger-weblog-id))))))))
-
     (goto-char (point-max))
     (when body-line
       (insert mail-header-separator "\n"))))
@@ -712,39 +697,26 @@ argument, prompts for the weblog to use."
 (defun weblogger-server-username (&optional prompt)
   "Get the username.  If you've not yet logged in then prompt for
 it."
+  (when prompt
+    (weblogger-cache-invalidate 'username))
   (or (weblogger-config-param weblogger-config-name "username")
-      (and prompt (weblogger-cache 'username (read-from-minibuffer "Username: ")))))
+      (weblogger-cache 'username (read-from-minibuffer "Username: "))))
 
 (defun weblogger-server-password (&optional prompt)
   "Get the password.  If you've not yet logged in then prompt for
 it."
+  (when prompt
+    (weblogger-cache-invalidate 'password))
   (or (weblogger-config-param weblogger-config-name "password")
-      (and prompt (weblogger-cache 'password (read-passwd (format "Password for %s: " (weblogger-server-url)))))))
-
-;;   (setq weblogger-server-password
-;;         (if (or prompt (not weblogger-server-password))
-;;             (if weblogger-server-password
-;;                 (read-passwd "Password for weblog server: "
-;;                              nil weblogger-server-password)
-;;                 (read-passwd "Password for weblog server: " nil))
-;;             weblogger-server-password)))
+      (weblogger-cache 'password (read-passwd (format "Password for %s: " (weblogger-server-url))))))
 
 (defun weblogger-weblog-id (&optional prompt)
   "Get the weblog ID."
+  (when prompt
+    (weblogger-cache-invalidate 'weblog))
   (or (weblogger-config-param weblogger-config-name "weblog")
-      (and prompt (weblogger-cache 'weblog 
-                                   (weblogger-select-weblog prompt)))))
-
-;; (read-passwd (format "Password for %s: " (weblogger-server-url))))))
-;;   (setq weblogger-weblog-id
-;;         (progn (when (and
-;;                       (assoc weblogger-config-name weblogger-config-alist)
-;;                       (not weblogger-weblog-id))
-;;                  (weblogger-select-configuration weblogger-config-name))
-;;                (if (or prompt
-;;                        (not weblogger-weblog-id))
-;;                    (weblogger-select-weblog prompt)
-;;                    weblogger-weblog-id))))
+      (weblogger-cache 'weblog 
+                       (weblogger-select-weblog prompt))))
 
 (defun weblogger-api-new-entry (struct publishp)
   "Publish a new entry (STRUCT) using the best method available."
@@ -770,7 +742,8 @@ it."
   "Get a list of entries."
   (unless weblogger-api-list-entries
     (weblogger-determine-capabilities))
-  (eval `(,weblogger-api-list-entries count))) 
+  (when weblogger-api-list-entries
+    (eval `(,weblogger-api-list-entries count))))
 ;; This is an interesting means of polymorphism. I was wrong about
 ;; what it was doing initially.  weblogger-api-list-entries is a
 ;; variable that holds a function name, so there is no redefining of
@@ -781,7 +754,8 @@ it."
   "Get a list of categories."
   (unless weblogger-api-list-categories
     (weblogger-determine-capabilities))
-  (eval `(,weblogger-api-list-categories)))
+  (when weblogger-api-list-categories
+    (eval `(,weblogger-api-list-categories))))
 
 (defun weblogger-select-weblog (&optional fetch)
   "Allows the user to select a weblog and returns the weblog ID.
@@ -808,7 +782,7 @@ re-queried for a list of weblogs the user owns"
                (lambda (weblog)
                  (cons (cdr (assoc "blogName" weblog))
                        (cdr (assoc "blogid" weblog))))
-               (weblogger-weblog-alist)))))
+               (weblogger-api-weblog-alist)))))
 
 (defun weblogger-weblog-name-from-id (id)
   "Returns the weblog name given the id."
@@ -817,7 +791,7 @@ re-queried for a list of weblogs the user owns"
                (lambda (weblog)
                  (cons (cdr (assoc "blogid" weblog))
                        (cdr (assoc "blogName" weblog))))
-               (weblogger-weblog-alist)))))
+               (weblogger-api-weblog-alist)))))
 
 (defun weblogger-texttype-name-from-id (id)
   "Returns the texttype name given the id."
@@ -847,12 +821,12 @@ re-queried for a list of weblogs the user owns"
 (defun weblogger-texttype-alist (&optional fetch)
   "Returns the alist of texttypes allowed by the server."
   (when (cdr (assoc "mt.supportedTextFilters" weblogger-capabilities))
-    (when (or fetch (not weblogger-texttype-alist))
-      (setq weblogger-texttype-alist
-            (xml-rpc-method-call 
-             (weblogger-server-url)
-             'mt.supportedTextFilters)))
-    weblogger-texttype-alist))
+    (when fetch
+      (weblogger-cache-invalidate 'texttype-alist))
+    (weblogger-cache 'texttype-alist
+                     (xml-rpc-method-call 
+                      (weblogger-server-url)
+                      'mt.supportedTextFilters))))
 
 (defun weblogger-select-texttype (&optional fetch)
   "Allows the user to select a texttype for entries."
@@ -874,8 +848,13 @@ re-queried for a list of weblogs the user owns"
     value))
 
 (defun weblogger-server-url ()
-  ""
-  (weblogger-config-param weblogger-config-name "server-url"))
+  "Returns the server url."
+  (weblogger-config-server 'url))
+
+(defun weblogger-config-server-type ()
+  "Returns the server url."
+  (nth 0 (weblogger-config-server 'rpc)))
+  ;(weblogger-config-param weblogger-config-name "server-url"))
 
 (defun weblogger-server-url-from-id (id)
   "Returns the weblog URL given the id."
@@ -884,26 +863,21 @@ re-queried for a list of weblogs the user owns"
                (lambda (weblog)
                  (cons (cdr (assoc "blogid" weblog))
                        (cdr (assoc "url" weblog))))
-               (weblogger-weblog-alist)))))
+               (weblogger-api-weblog-alist)))))
 
 (defun weblogger-list-weblog-names (&optional fetch)
   "Returns a list of weblog names."
   (mapcar 
    (lambda (blog)
      (cdr (assoc "blogName" blog)))
-   (weblogger-weblog-alist fetch)))
+   (weblogger-api-weblog-alist fetch)))
 
-(defun weblogger-weblog-alist (&optional fetch)
+(defun weblogger-api-weblog-alist (&optional fetch)
   "Returns the alist of weblogs owned by a user on the server."
-  (setq weblogger-weblog-alist
-        (if (or fetch (not weblogger-weblog-alist))
-            (xml-rpc-method-call 
-             (weblogger-server-url)
-             'blogger.getUsersBlogs
-             weblogger-blogger-app-key
-             (weblogger-server-username)
-             (weblogger-server-password))
-            weblogger-weblog-alist)))
+  (when fetch
+    (weblogger-cache-invalidate 'weblog-alist))
+  (when weblogger-api-weblog-alist
+    (weblogger-cache 'weblog-alist (funcall weblogger-api-weblog-alist))))
 
 (defun weblogger-ping-weblogs (&optional id)
   "Ping the weblog aggregators listed in weblogger-ping-urls."
@@ -960,24 +934,13 @@ is set, then add it to the current index and go to that entry."
   (interactive)
   (weblogger-goto-entry +1 t))
 
-(defun weblogger-api-xmlrpc-delete-entry (struct)
-  (let* ((msgid (cdr (assoc "entry-id" struct))))
-    (xml-rpc-method-call
-     (weblogger-server-url)
-     'blogger.deletePost
-     weblogger-blogger-app-key
-     msgid
-     (weblogger-server-username)
-     (weblogger-server-password)
-     t)))
-
 (defun weblogger-delete-entry ()
   "Delete the entry."
   (interactive)
   (unless weblogger-ring-index
     (message "You must have an entry loaded first."))
   (when (y-or-n-p "Do you really want to delete this entry? ")
-      ;; I wonder why eval is used in the other ones and not funcall?
+    ;; I wonder why eval is used in the other ones and not funcall?
     (funcall weblogger-api-delete-entry (ring-ref weblogger-entry-ring 
                                                   weblogger-ring-index))
     (ring-remove weblogger-entry-ring weblogger-ring-index)
@@ -1032,7 +995,7 @@ like."
                           (cons "title"        title)
                           ;; See if we can extract the title from the first line of the
                           ;; message body if it wasn't in a header.
-                          (when (and weblogger-blogger-firstline-title
+                          (when (and (weblogger-blogger-firstline-title)
                                      (string-match "^<title>\\(.*\\)</title>.*\n" (cdr content)))
                             (setq title (match-string 1 (cdr content)))
                             (setcdr content
@@ -1098,16 +1061,8 @@ like."
 
 (defun weblogger-server-userid ()
   "Get information on user."
-  (or weblogger-server-userid
-      (setq weblogger-server-userid 
-            (cdr
-             (assoc "userid"
-                    (xml-rpc-method-call
-                     (weblogger-server-url)
-                     'blogger.getUserInfo
-                     weblogger-blogger-app-key
-                     (weblogger-server-username)
-                     (weblogger-server-password)))))))
+  (when weblogger-api-blogger-server-userid
+    (funcall weblogger-api-blogger-server-userid)))
 
 (defun weblogger-fetch-entries ()
   "Sync the entry ring with what is on the weblog server."
@@ -1122,6 +1077,10 @@ like."
 
 (defun weblogger-determine-capabilities ()
   "Determine the capabilities of the remote weblog server."
+  (if (eq (weblogger-config-server-type) 'gdata)
+      (weblogger-install-gdata)
+      ;; otherwise do everything else.
+      (weblogger-install-blogger)
   (setq weblogger-capabilities weblogger-no-capabilities)
   (let ((has-meta-api t)
         (has-mt-api t)
@@ -1153,7 +1112,7 @@ like."
          (setq weblogger-api-list-entries 'weblogger-api-meta-list-entries))
         (t
          (setq weblogger-api-list-entries
-               'weblogger-api-blogger-list-entries))))
+               'weblogger-api-blogger-list-entries)))))
 
 (defun weblogger-entry-buffer-to-struct (&optional encode buffer)
   "Convert an entry BUFFER to a struct (which is then used
