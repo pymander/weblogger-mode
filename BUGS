@@ -1,0 +1,9 @@
+* BUGS
+** Inherited bugs from 
+   - When you delete an entry it gets deleted, but it doesn't
+     disappear from your entry ring until you sync (M-g) with the
+     server.  But this could be construed as a (mis)feature.
+   - If the server isn't reachable, (weblogger-determine-capabilities)
+     will get the wrong information.
+   - Changed titles aren't put in the weblogger post ring.
+  

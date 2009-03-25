@@ -1,0 +1,37 @@
+* AUTHORS
+** Mark A. Hershberger <mah@everybody.org>
+   Original author of blogger.el it seems.  
+** Simon Kittle
+   Inspired the original author's implementation.
+** Wickersheimer Jeremy 
+   
+** Gabriel Saldana 
+   This code was originally based on Simon Kittle's blogger.el
+   (http://www.tswoam.co.uk/files/blogger.el.txt), but where his
+   code calls a Perl program, this code uses xml-rpc.el.  You can
+   get xml-rpc.el from <http://elisp.info/package/xml-rpc/>
+   
+   Differences between SK's blogger.el and weblogger.el
+   
+  - Doesn't need any external programs.  Uses xml-rpc.el.
+  - I've added a bunch of defcustom's here to make this integrate
+    better with Emacs Customization interface. 
+  - Created a *weblogger-entry* mode.
+  - Made selection of a weblog more intuitive.  It queries the
+    server and allows the user to choose the name of the
+    weblog from a list.
+  - Prompt for weblog on initial entry if weblogger-id isn't set.
+  - Can "ping" http://weblogs.com/ and http://blo.gs/ whenever
+    you update.
+  - Can "scroll" through entries on the weblog server and edit them.
+  - Many other features.
+
+** Shane Celis <shane (at) gnufoo (dot) org> 
+   Updated Blogger interface to use GData implementation.
+** Copyright Claims
+   Copyright (C) 2002-2007 Mark A. Hershberger
+   Inspired by code Copyright (C) 2001 by Simon Kittle
+   Parts Copyright (C) 2007 Wickersheimer Jeremy
+   Parts Copyright (C) 2009 Gabriel Saldana
+   Parts Copyright (C) 2009 Shane Celis
+   

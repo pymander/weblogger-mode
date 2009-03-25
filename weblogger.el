@@ -1,16 +1,10 @@
 ;;; weblogger.el - Weblog maintenance via XML-RPC and GData APIs
 
-;; Copyright (C) 2002-2007 Mark A. Hershberger
-;; Inspired by code Copyright (C) 2001 by Simon Kittle
-;; Parts Copyright (C) 2007 Wickersheimer Jeremy
-;; Parts Copyright (C) 2009 Gabriel Saldana
-;; Parts Copyright (C) 2009 Shane Celis
-
-;; Author: Mark A. Hershberger <mah@everybody.org>
-;; Version: 1.6
+;; Original Author: Mark A. Hershberger - See AUTHORS for more details.
+;; Version: 2.0
 ;; Created: 2002 Oct 11
 ;; Keywords: weblog blogger cms movabletype openweblog blog gdata
-;; URL: http://elisp.info/package/weblogger/
+;; URL: http://www.github.com/scelis/weblogger/tree/master
 
 ;; This file is not yet part of GNU Emacs.
 
@@ -39,34 +33,30 @@
 ;; If you don't yet have a weblog, you can set one up for free on
 ;; various services.  
 ;;
-;; To set up your profile:
-;;
-;;    M-x weblogger-setup-weblog RET
-;; You will be prompted for some information.  You can save this setup
-;; using M-x customize-save-customized. *** FIXME: Make sure this works!
-
-;; *** FIXME This section is complete fantasy at the moment.
-;; ;; If you already have a weblog, and your weblog supports RSD
-;; ;; (http://archipelago.phrasewise.com/rsd), you can use
-;; ;;
-;; ;;    M-x weblogger-discover-server RET url RET
-;; ;;
-;; ;; where url is the URL of your weblog.  This will set up a
-;; ;; ~/.webloggerrc file for you if you let it.
-
-;; You can also set up your server information using
-;;
-;;    M-x customize-group RET weblogger RET
-;;
-;;; Keymaps:
+;;; Installation
 ;;
 ;; I use the following commands in my .emacs file:
 ;;
-;; (load-file "weblogger.el")
+;; (add-to-list 'load-path "/path/to/weblogger-directory")
+;; (require 'weblogger)
+;;
+;;; Setup
+;;
+;; To set up your profile:
+;;
+;;    M-x customize-group RET weblogger RET
+;;
+;; Make sure to pay special attention to "Weblog Configurations"
+;; and "Weblogger Servers".
+;;
+;;; Keymaps:
+;;
+;; I use the following command in my .emacs file:
+;;
 ;; (global-set-key "\C-cbs" 'weblogger-start-entry)
 ;;
-;; C-c b s will then switch to a new buffer where you can compose a
-;; entry.
+;; Then C-c b s will then switch to a new buffer where you can compose
+;; a entry.  
 ;;
 ;; C-x C-s    -- post-and-publish current buffer to the weblog.
 ;;               Calling weblogger-publish-entry with an prefix argument
@@ -96,132 +86,112 @@
 ;;
 ;; C-c C-s u  -- Change the user (re-login).
 ;;
+;; See the TODO and BUGS file to see the currently issues and
+;; potential features.
 ;;
-;; Notes:
-;; ------
-;;
-;; This code was originally based on Simon Kittle's blogger.el
-;; (http://www.tswoam.co.uk/files/blogger.el.txt), but where his
-;; code calls a Perl program, this code uses xml-rpc.el.  You can
-;; get xml-rpc.el from <http://elisp.info/package/xml-rpc/>
-;;
-;; Differences between SK's blogger.el and weblogger.el
-;;
-;; - Doesn't need any external programs.  Uses xml-rpc.el.
-;; - I've added a bunch of defcustom's here to make this integrate
-;;   better with Emacs Customization interface. 
-;; - Created a *weblogger-entry* mode.
-;; - Made selection of a weblog more intuitive.  It queries the
-;;   server and allows the user to choose the name of the
-;;   weblog from a list.
-;; - Prompt for weblog on initial entry if weblogger-id isn't set.
-;; - Can "ping" http://weblogs.com/ and http://blo.gs/ whenever
-;;   you update.
-;; - Can "scroll" through entries on the weblog server and edit them.
-;; - Many other features.
-;;
-;;  TODO:
-;;  * Categories [done for metaWebBlog]
-;;  * RSD
-;;  * Weblog creation using OpenWeblog.com
-;;  * Menus
-;;  * Toolbar
-;;
-;; Bugs/Features:
-;;
-;;  * When you delete an entry it gets deleted, but it doesn't
-;;    disappear from your entry ring until you sync (M-g) with the
-;;    server.  But this could be construed as a (mis)feature.
-;;  * If the server isn't reachable, (weblogger-determine-capabilities)
-;;    will get the wrong information.
-;;  * Changed titles aren't put in the weblogger post ring.
 
 (require 'xml-rpc)
 (require 'message)
 (require 'ring)
 
-(require 'weblogger-meta)
+;(require 'weblogger-dummy)
 (require 'weblogger-blogger)
-(require 'weblogger-dummy)
 (require 'weblogger-gdata)
+(require 'weblogger-meta)
 
 (defgroup weblogger nil
   "Edit weblogs with Emacs."
-  :group 'emacs)
+  :group 'emacs
+  :link '(url-link "http://www.github.com/scelis/weblogger/tree/master"))
+
+(defconst weblogger-version "2.0"
+  "Current version of weblogger.el")
 
 (defvar weblogger-blogger-app-key "07C72E6970E0FBA5DE21BA9F4800C44534C19870"
   "The appkey to send to weblog server.  Generally this shouldn't be changed.")
 
+(defvar weblogger-config-alist-default '(("myblog" ("weblog"   . "weblogid")
+                                                   ("username" . "your username")
+                                                   ("server"   . "blogger")))
+  "The default configuration.  Gives us something to check
+  against if someone tries to connect without doing anything.")
+
+(defcustom weblogger-config-alist weblogger-config-alist-default
+  "IMPORTANT!  This stores the username, server, blog id, and
+  password*.  The server is the name specified below in the
+  Weblogger Servers.  The URL and other server specific
+  information is provided in the Weblogger Servers section.
+
+* If you're sure you want to store it in plaintext in your .emacs
+  file.  It is not recommended."
+  :group 'weblogger
+  :tag "Weblog Configurations"
+  :type '(alist :key-type string :value-type (alist :key-type string :value-type string :options ("weblog" "username" "server"))))
+
+(defcustom weblogger-config-name "default"
+  "Name of the default configuration."
+  :tag "Default Weblog Configuration Name"
+  :group 'weblogger
+  :type 'string)
+
 (defcustom weblogger-servers
   '(
     (blogger     "Blogger (GData)" (gdata "http://www.blogger.com/feeds/") nil)
-    (blogger-old "Blogger (XMLRPC) old" 
-     (xmlrpc "http://www2.blogger.com/api") t)
-    (movabletype "Movable Type" 
-     (xmlrpc "") nil)
+    (blogger-old "Blogger (XMLRPC) old" (xmlrpc "http://www2.blogger.com/api") t)
+;    (movabletype "Movable Type" (xmlrpc "") nil)
     (openweblog  "Open Weblog" 
      (xmlrpc "http://www.openweblog.com/xmlrpc/") nil)
     (cms         "Blog CMS" 
      (xmlrpc "http://www.yourserver.com/yourpath/nucleus/xmlrpc/server.php") nil)
-    (metaweblog  "MetaWeblog" 
-     (xmlrpc "") nil)
+;    (metaweblog  "MetaWeblog" (xmlrpc "") nil)
     (livejournal "Livejournal (Blogger API)" 
      (xmlrpc "http://www.livejournal.com/interface/blogger") t)
     ;; The livejournal XMLRPC API is not supported yet.
     ;;(livejournal "Livejournal" (xmlrpc "http://www.livejournal.com/interface/xmlrpc"))
     )
-  "what"
-  :type '(repeat (list 
-                  (symbol :tag "Identifying Symbol")
-                  (string :tag "Title String")
+  "Each server has a name that can be referenced in Weblog
+Configurations, a descrption, whether its XML-RPC or GData along
+with a URL, and whether it handles titles like Blogger's XML-RPC
+API, which is to place the title on the first line.  "
+  :type '(repeat (group 
+                  (symbol :tag "Server")
+                  (string :tag "Description")
                   (choice :tag "RPC Type"
-                   (list :tag "XML-RPC" (const xmlrpc) (string :tag "URL"))
-                   (list :tag "GData" (const gdata) (string :tag "URL")))
-                   ;(list :tag "GData" (const gdata))
-                  ;(const :tag "GData" gdata))
-                  (boolean :tag "title in first line")
+                   (group :tag "XML-RPC" (const xmlrpc) (string :tag "URL"))
+                   (group :tag "GData" (const gdata) (string :tag "URL")))
+                  (boolean :tag "Title in first line")
                    ))
   :group 'weblogger)
-
-(defcustom weblogger-max-entries-in-ring 20
-  "Maximum number of entries that will be retrieved from the
-server.  There may be a server-side limitation to this number."
-  :group 'weblogger
-  :type 'integer)
-
-(defcustom weblogger-ping-urls '("http://rpc.weblogs.com/RPC2")
-  "List of URLs to ping using the XML-RPC interface defined at 
-<http://www.xmlrpc.com/weblogsCom>."
-  :group 'weblogger
-  :type 'list)
 
 ; If we do save the passwords, we should do some half-ass encryption
 ; at least.
 (defcustom weblogger-save-password nil
-  "Whether to save to the password or not."
+  "Whether to save to the password to disk or not.  (Passwords
+will still be cached in the session even if this is set to nil.)"
   :group 'weblogger
   :type 'boolean)
 
-(defcustom weblogger-config-alist '("myblog" (("username" . "your username")
-                                              ("server" . "blogger")
-                                              ("weblog" . "Weblog name")))
-  "Alist of configurations."
-  :group 'weblogger
-  :type '(alist :key-type string :value-type (alist :key-type string :value-type string :options ("username" "server-url" "weblog" "server"))))
+(defcustom weblogger-default-title ""
+  "The default title to use when making an entry.  This is added
+if your weblog server supports titles on entries but you haven't
+set one.  Set to \"\" for no title."
+  :type 'string
+  :group 'weblogger)
 
-;; (defcustom weblogger-blogger-firstline-title nil
-;;   "Look for the title in the first line surrounded by <title>
-;; tags when using the Blogger API."
-;;   :group 'weblogger
-;;   :type 'boolean)
+(defcustom weblogger-default-categories nil
+  "The default list of categories when making an entry.  This is
+added if your weblog server supports categories on entries but you
+haven't set one.  Set to nil for no category."
+  :type '(repeat (string :tag "category")) 
+  :group 'weblogger)
 
-(defcustom weblogger-config-name "default"
-  "Name of the default configuration."
-  :group 'weblogger
-  :type 'string)
+(defcustom weblogger-default-tags nil
+  "The default list of tags when making an entry. This is added
+if your weblog server supports tags on entries but you haven't
+set one.  Set to nil for no tags."
+  :type '(repeat (string :tag "tag")) 
+  :group 'weblogger)
 
-(defvar weblogger-config-name-default "default"
-  "Name of the default configuration.")
 
 (defvar weblogger-entry-list nil
   "List of weblog entries that we know about. Chronological
@@ -252,7 +222,19 @@ where you would put weblogger-ping-weblogs to let weblog
 aggregators know that you have updated."
   :group 'weblogger)
 
-;; There are a lot of caches here I'd like to do away with.
+(defcustom weblogger-max-entries-in-ring 20
+  "Maximum number of entries that will be retrieved from the
+server.  There may be a server-side limitation to this number."
+  :group 'weblogger
+  :type 'integer)
+
+(defcustom weblogger-ping-urls '("http://rpc.weblogs.com/RPC2")
+  "List of URLs to ping using the XML-RPC interface defined at 
+<http://www.xmlrpc.com/weblogsCom>."
+  :group 'weblogger
+  :type '(repeat (string :tag "URL")))
+
+
 (defvar weblogger-cache nil
   "Holds a cache of all the values associated with the current server.")
 
@@ -272,6 +254,7 @@ aggregators know that you have updated."
 (defvar weblogger-category-ring nil
   "Ring that holds all the categories.")
 
+;; tag-ring is never used.  It should be removed.
 ;; (defvar weblogger-tag-ring nil
 ;;   "Ring that holds all the tags.")
 
@@ -311,29 +294,8 @@ aggregators know that you have updated."
 (defvar weblogger-capabilities weblogger-no-capabilities
   "Known capabilities of the remote host")
 
-(defcustom weblogger-default-title ""
-  "The default title to use when making an entry.  This is added
-if your weblog server supports titles on entries but you haven't
-set one.  Set to \"\" for no title."
-  :type 'string
-  :group 'weblogger)
-
-(defcustom weblogger-default-categories nil
-  "The default list of categories when making an entry.  This is
-added if your weblog server supports categories on entries but you
-haven't set one.  Set to nil for no category."
-  :type '(repeat (string :tag "category")) 
-  :group 'weblogger)
-
-(defcustom weblogger-default-tags nil
-  "The default list of tags when making an entry. This is added
-if your weblog server supports tags on entries but you haven't
-set one.  Set to nil for no tags."
-  :type '(repeat (string :tag "tag")) 
-  :group 'weblogger)
-
-;; Here are the five functions that need to be implemented to support
-;; other blogs.
+;; Here are the functions that need to be implemented to support other
+;; blogs.
 (defvar weblogger-api-new-entry nil)
 (defvar weblogger-api-send-edits nil)
 (defvar weblogger-api-list-entries nil)
@@ -343,9 +305,6 @@ set one.  Set to nil for no tags."
 (defvar weblogger-api-server-userid nil)
 
 (defvar menu-bar-weblogger-menu nil)
-
-(defconst weblogger-version "1.6"
-  "Current version of weblogger.el")
 
 (unless weblogger-entry-mode-map
   (setq weblogger-entry-mode-map
@@ -441,6 +400,7 @@ tags when using the Blogger API."
                                          (caar configs)
                                          (completing-read 
                                           "Config Name: " configs nil t))))
+                       (weblogger-check-configuration)
                             conf)))
   ;(unless (string-equal weblogger-config-name config)
     (setq weblogger-cache nil);)
@@ -448,50 +408,17 @@ tags when using the Blogger API."
   (weblogger-determine-capabilities)
   (weblogger-api-weblog-alist t))
 
-(defun weblogger-setup-weblog ()
-  "Create a profile for a weblog."
-  (interactive)
-  ;(weblogger-change-server)
-  (let ((user   (weblogger-server-username t))
-        (pass   (weblogger-server-password t))
-        (weblog (weblogger-weblog-id       t)))
-    (setq weblogger-config-name
-          (read-from-minibuffer
-           (format "Name this configuration (\"%s\"): "
-                   weblogger-config-name-default)
-           weblogger-config-name-default))
-    (let ((conf (assoc weblogger-config-name weblogger-config-alist))
-          (settings (delq nil
-                          (list
-                           (cons "user"       user)
-                           (cons "server-url" weblogger-server-url)
-                           (when weblogger-save-password
-                             (cons "pass"     pass))
-                           (cons "weblog"     weblog)))))
-      (if conf
-          (setcdr conf settings)
-          (setq weblogger-config-alist
-                (append weblogger-config-alist 
-                        (list
-                         (cons weblogger-config-name
-                               settings)))))))
-  (weblogger-save-configuration))
-
-(defun weblogger-save-configuration ()
-  "Save the current configuration using the name from CONFIG in
-the filename in weblogger-config-file."
-  (customize-save-variable 'weblogger-config-alist
-                           weblogger-config-alist))
-
 (defun weblogger-change-user ()
   "Change username and password."
   (interactive)
+  (weblogger-check-configuration)
   (weblogger-server-username t)
   (weblogger-server-password t))
 
 (defun weblogger-change-weblog ()
   "Change the weblog."
   (interactive)
+  (weblogger-check-configuration)
   (let ((point-save (point)))
     (weblogger-weblog-id t)
     (message-remove-header "Weblog") 
@@ -503,6 +430,7 @@ the filename in weblogger-config-file."
 (defun weblogger-change-texttype ()
   "Change Text Type."
   (interactive)
+  (weblogger-check-configuration)
   (let ((point-save (point)))
     (message-remove-header "X-TextType")
     (message-add-header (concat "X-TextType: " 
@@ -513,6 +441,7 @@ the filename in weblogger-config-file."
 (defun weblogger-entry-mode ()
   "Major mode for editing text for Weblogger.  Based on message-mode."
   (interactive)
+  (weblogger-check-configuration)
   (message-mode)
   (message-disassociate-draft)
   (use-local-map weblogger-entry-mode-map)
@@ -525,6 +454,7 @@ the filename in weblogger-config-file."
 (defun weblogger-template-mode ()
   "Major mode for editing templates for Weblogger. Based on text-mode."
   (interactive)
+  (weblogger-check-configuration)
   (text-mode)
   (use-local-map weblogger-template-mode-map)
   (setq mode-name "weblogger-template")
@@ -550,6 +480,7 @@ the filename in weblogger-config-file."
 (defun weblogger-save-template ()
   "Save a Template. TYPE indicates which one."
   (interactive)
+  (weblogger-check-configuration)
   (if (buffer-modified-p)
       (progn (xml-rpc-method-call
               (weblogger-server-url)
@@ -565,11 +496,13 @@ the filename in weblogger-config-file."
 (defun weblogger-edit-main-template ()
   "Edit the main template"
   (interactive)
+  (weblogger-check-configuration)
   (weblogger-edit-template "main"))
 
 (defun weblogger-edit-archive-template ()
   "Edit the template for archive listings"
   (interactive)
+  (weblogger-check-configuration)
   (weblogger-edit-template "archive"))
 
 (defun weblogger-start-entry (&optional prompt)
@@ -578,6 +511,7 @@ With a prefix, it will check the available weblogs on the server
 and prompt for the weblog to post to if multiple ones are
 available."
   (interactive "P")
+  (weblogger-check-configuration)
   (if prompt (weblogger-weblog-id prompt))
   (unless weblogger-entry-ring
     (setq weblogger-entry-ring (make-ring weblogger-max-entries-in-ring)))
@@ -648,6 +582,7 @@ available."
   "Send but not publish the current entry.  With optional argument, prompts
 for the weblog to use."
   (interactive)
+  (weblogger-check-configuration)
   (weblogger-save-entry nil arg)
   ;(bury-buffer)
   )
@@ -656,6 +591,7 @@ for the weblog to use."
   "Publish the current entry.  With optional argument, prompts
 for the weblog to use."
   (interactive)
+  (weblogger-check-configuration)
   (set-buffer-modified-p t)
   (weblogger-save-entry t arg)
   ;(bury-buffer)
@@ -665,6 +601,7 @@ for the weblog to use."
   "Publish the current entry is publishp is set.  With optional
 argument, prompts for the weblog to use."
   (interactive)
+  (weblogger-check-configuration)
   (if (not (equal (current-buffer) *weblogger-entry*))
       (message 
        "You are not in the *weblogger-entry* buffer.")
@@ -763,6 +700,7 @@ If there is only one weblog owned by the user on the server, then
 that weblog is returned.  With FETCH defined, the server is
 re-queried for a list of weblogs the user owns"
   (interactive)
+  (weblogger-check-configuration)
   (weblogger-weblog-id-from-weblog-name
    (let* ((completion-ignore-case t)
           (seq 0)
@@ -1067,6 +1005,7 @@ like."
 (defun weblogger-fetch-entries ()
   "Sync the entry ring with what is on the weblog server."
   (interactive)
+  (weblogger-check-configuration)
   (setq weblogger-entry-ring (make-ring weblogger-max-entries-in-ring))
   (setq weblogger-category-ring (make-ring 20))
   (weblogger-api-list-categories)
@@ -1075,8 +1014,19 @@ like."
   (weblogger-edit-entry
    (ring-ref weblogger-entry-ring weblogger-ring-index)))
 
+(defun weblogger-check-configuration ()
+  (interactive)
+  (if (equal weblogger-config-alist weblogger-config-alist-default)
+      ;; We should do something here.
+      ;(if (yes-or-no-p "Weblogger has not been configured.  Do you want to configure it? ")
+      ;(call-interactively (lambda () (customize-group 'weblogger)))
+      (error "Not configured yet.  Use M-x customize-group RET weblogger RET")
+          ;)
+      ))
+
 (defun weblogger-determine-capabilities ()
   "Determine the capabilities of the remote weblog server."
+  (weblogger-check-configuration)
   (if (eq (weblogger-config-server-type) 'gdata)
       (weblogger-install-gdata)
       ;; otherwise do everything else.
@@ -1184,3 +1134,4 @@ internally).  If BUFFER is not given, use the current buffer."
 ;;  	tool-bar-map))))
 
 (provide 'weblogger)
+Weblog: gnufool

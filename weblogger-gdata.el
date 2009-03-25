@@ -18,10 +18,6 @@
 ;; (g-app-get-entry gblogger-auth-handle gblogger-base-url)
 ;; (g-app-get-entry gblogger-auth-handle "http://gnufool.blogspot.com/feeds/posts/default")
 
-;; random e-blog code notes
-;; (setq feed (e-blog-parse-xml (e-blog-fetch-bloglist)))
-;; (e-blog-get-titles feed)
-;; (setq entry (e-blog-get-entry "gnufool" feed))
 (require 'g)
 (require 'g-app)
 (require 'gblogger)
@@ -46,7 +42,6 @@
 (defun weblogger-api-gdata-send-edits (struct &optional publishp)
   "Blogger API method to post edits to an entry specified by
 STRUCT.  If PUBLISHP is non-nil, publishes the entry as well."
-  (message "gdata-send-edits")
   (setq last-struct struct)
   (let* ((buffer     (current-buffer))
          (url        (cdr (assoc "url" struct)))
@@ -108,14 +103,12 @@ STRUCT.  If PUBLISHP is non-nil, publishes the entry as well."
 (defun weblogger-api-gdata-new-entry (struct publishp)
   "Post a new entry from STRUCT.  If PUBLISHP is non-nil, publishes the
 entry as well."
-  (message "gdata-new-entry")
   (let* ((post-url   (my-get-post-url))
          (title      (cdr (assoc "title" struct)))
          (content    (cdr (assoc "content" struct)))
          (categories (cdr (assoc "categories" struct)))
          (xml-buffer (gblogger-new-entry post-url title))
-         (entry      (car (parse-xml-buffer xml-buffer)))
-         )
+         (entry      (car (parse-xml-buffer xml-buffer))))
     (setq last-xml-buffer xml-buffer)
     (setq last-entry entry)
     (my-change-title entry title)
@@ -169,9 +162,7 @@ entry as well."
          (lispml (parse-xml-buffer xml-buffer))
          (entries (xml-get-children (xml-node-name lispml) 'entry))
          )
-    (mapcar 'weblogger-gdata-entry-to-weblog-alist entries)
-    ;entries
-    ))
+    (mapcar 'weblogger-gdata-entry-to-weblog-alist entries)))
 
 (defun weblogger-gdata-entry-to-weblog-alist (entry)
   (let* ((title (car (xml-node-children (car (xml-get-children entry 'title)))))
@@ -181,16 +172,14 @@ entry as well."
          )
     `(("blogName" . ,title)
       ("url" . ,url)
-      ("blogid" .,better-id)
-      )))
+      ("blogid" .,better-id))))
 
 (defun weblogger-api-gdata-list-entries (&optional count)
   "Return a list of entries that the weblog server has.  COUNT specifies
 how many of the most recent entries to get.  If COUNT is not
 specified, then the default is weblogger-max-entries-in-ring."
-  (let* ((url (format weblogger-gdata-fetch-entries-url-format (weblogger-weblog-id)))
-                                        ;"http://www.blogger.com/feeds/5594832128999528489/posts/default")
-           ;"http://gnufool.blogspot.com/feeds/posts/full") ; XXX - fix url
+  (let* ((url (format weblogger-gdata-fetch-entries-url-format 
+                      (weblogger-weblog-id)))
          (url* (if count (format "%s?max-results=%d" url count) url))
          (xml-buffer (g-app-get-entry gblogger-auth-handle url*))
          (lispml (parse-xml-buffer xml-buffer))
@@ -236,7 +225,6 @@ for that ENTRY."
        (xml-node-children
         (xml-node-name
          (xml-get-children entry 'content)))))
-
 
 (defun my-get-labels (entry)
   "Given an elisp representation of an ENTRY, returns a list of
