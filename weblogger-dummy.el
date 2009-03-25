@@ -1,6 +1,7 @@
 ;; weblogger-dummy.el
 ;;
-;; This is just a stub for possibly implementing other blogs.
+;; This is just a stub for possibly implementing interfaces to other
+;; blogs.
 
 (defun install-dummy ()
   (interactive)

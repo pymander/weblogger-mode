@@ -1,8 +1,29 @@
-* Everything that's left TODO [40%]
+* Everything that's left TODO [60%]
   - [X] post new entries
   - [X] edit old entries
-  - [ ] what's with the weird xhtml div thing?  That looks like
+  - [X] what's with the weird xhtml div thing?  That looks like
     plumbing.
-  - [ ] need to be able to delete stuff
-  - [ ] need to move all the XML-RPC assumptions out of weblogger.el
-        
+  - [X] need to be able to delete stuff
+  - [X] need to move all the XML-RPC assumptions out of weblogger.el
+  - [ ] edit template?
+        Not supported by GData
+  - [X] save as draft, but don't publish
+        - [X] can you go back to a draft after you've published it?
+  - [X] move all the e-blog code out
+  - [ ] what about the gblogger and g-client code?  
+        Am I go to base it on top of gblogger? or just g-app?
+
+        I see two choices, either I can rip the UI and stick it into
+        gblogger and only support blogger.  Or, I can integrate it
+        properly into weblogger, but then I have to find some way of
+        testing it with all the xml-rpc junk.  
+
+        I'm leaning towards just ripping out the UI from weblogger.
+
+  - [X] get the post url correctly
+  - [ ] get the query url right.
+  - [ ] stick it into github
+  - [ ] announce
+  - [ ] test it with an xmlrpc blog to make sure it still works
+  - [X] drafts are being pulled up. 
+

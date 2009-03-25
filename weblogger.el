@@ -1,14 +1,15 @@
-;;; weblogger.el - Weblog maintenance via XML-RPC APIs
+;;; weblogger.el - Weblog maintenance via XML-RPC and GData APIs
 
-;; Copyright (C) 2002-2007 Mark A. Hershberger.
-;; Inspired by code Copyright (C) 2001 by Simon Kittle.
-;; Parts Copyright (C) 2007 Wickersheimer Jeremy.
+;; Copyright (C) 2002-2007 Mark A. Hershberger
+;; Inspired by code Copyright (C) 2001 by Simon Kittle
+;; Parts Copyright (C) 2007 Wickersheimer Jeremy
 ;; Parts Copyright (C) 2009 Gabriel Saldana
+;; Parts Copyright (C) 2009 Shane Celis
 
 ;; Author: Mark A. Hershberger <mah@everybody.org>
 ;; Version: 1.6
 ;; Created: 2002 Oct 11
-;; Keywords: weblog blogger cms movable type openweblog blog
+;; Keywords: weblog blogger cms movabletype openweblog blog gdata
 ;; URL: http://elisp.info/package/weblogger/
 
 ;; This file is not yet part of GNU Emacs.
@@ -29,7 +30,7 @@
 ;; Boston, MA 02111-1307, USA.
 
 ;;; Commentary:
-
+;;
 ;; weblogger.el implements the Blogger, MetaWeblog, Movable Type, and
 ;; LiveJournal APIs to talk to server-side weblog software.
 ;;
@@ -98,7 +99,7 @@
 ;;
 ;;
 ;; Notes:
-;; ----
+;; ------
 ;;
 ;; This code was originally based on Simon Kittle's blogger.el
 ;; (http://www.tswoam.co.uk/files/blogger.el.txt), but where his
@@ -129,7 +130,7 @@
 ;;
 ;; Bugs/Features:
 ;;
-;;  * When you delete a entry it gets deleted, but it doesn't
+;;  * When you delete an entry it gets deleted, but it doesn't
 ;;    disappear from your entry ring until you sync (M-g) with the
 ;;    server.  But this could be construed as a (mis)feature.
 ;;  * If the server isn't reachable, (weblogger-determine-capabilities)
@@ -139,18 +140,20 @@
 (require 'xml-rpc)
 (require 'message)
 (require 'ring)
+
 (require 'weblogger-meta)
 (require 'weblogger-blogger)
 (require 'weblogger-dummy)
 (require 'weblogger-gdata)
 
 (defgroup weblogger nil
-  "Edit Weblogs with Emacs."
+  "Edit weblogs with Emacs."
   :group 'emacs)
 
 (defvar weblogger-blogger-app-key "07C72E6970E0FBA5DE21BA9F4800C44534C19870"
   "The appkey to send to weblog server.  Generally this shouldn't be changed.")
 
+;; Can I get rid of this?  Shouldn't this be in configure?
 (defcustom weblogger-server-username nil
   "Your weblog server username.  You will be prompted if this is left nil."
   :group 'weblogger
@@ -161,13 +164,44 @@
   :group 'weblogger
   :type 'string)
 
+(defcustom weblogger-servers
+  '(
+    (blogger     "Blogger (GData)" gdata nil)
+    (blogger-old "Blogger (XMLRPC) old" 
+     (xmlrpc "http://www2.blogger.com/api") t)
+    (movabletype "Movable Type" 
+     (xmlrpc "") nil)
+    (openweblog  "Open Weblog" 
+     (xmlrpc "http://www.openweblog.com/xmlrpc/") nil)
+    (cms         "Blog CMS" 
+     (xmlrpc "http://www.yourserver.com/yourpath/nucleus/xmlrpc/server.php") nil)
+    (metaweblog  "MetaWeblog" 
+     (xmlrpc "") nil)
+    (livejournal "Livejournal (Blogger API)" 
+     (xmlrpc "http://www.livejournal.com/interface/blogger") t)
+    ;(livejournal "Livejournal" (xmlrpc "http://www.livejournal.com/interface/xmlrpc"))
+    )
+  "what"
+  :type '(repeat (list 
+                  (symbol :tag "Identifying Symbol")
+                  (string :tag "Title String")
+                  (choice :tag "RPC Type"
+                   (list :tag "XML-RPC" (const xmlrpc) (string :tag "URL"))
+                   ;(list :tag "GData" (const gdata))
+                   (const :tag "GData" gdata))
+                  (boolean :tag "title in first line")
+                   )))
+  :group 'weblogger)
+
 ;; XXX add all the other blogs here server things here.
+;; Isn't this in config?
 (defcustom weblogger-server-url "http://www.openweblog.com/xmlrpc/"
   "Server you want to use.  If this is an OpenWeblog.com site, leave this
 at the default.  Otherwise, you will need to change it."
   :group 'weblogger
   :type 'string)
 
+;; Isn't this in config?
 (defcustom weblogger-weblog-id nil
   "Your weblog ID.  For many weblog servers, you can leave this
 nil and weblogger.el will prompt you for the weblog.  If it is a
@@ -187,6 +221,8 @@ server.  There may be a server-side limitation to this number."
   :group 'weblogger
   :type 'list)
 
+; If we do save the passwords, we should do some half-ass encryption
+; at least.
 (defcustom weblogger-save-password nil
   "Whether to save to the password or not."
   :group 'weblogger
@@ -195,15 +231,22 @@ server.  There may be a server-side limitation to this number."
 (defcustom weblogger-config-alist ()
   "Alist of possible configurations."
   :group 'weblogger
-  :type '(alist :key-type 'string :value-type 'alist))
+  ;:type '(alist :key-type 'string :value-type '(alist :key-type 'string :value-type 'string)))
+  ;:type 'alist)
+;  :type '(repeat (list (string :tag "Configuration Name") (cons (const "user") (string :tag "user name"))
+ ;                 (cons (const "server-url") (string :tag "server-url"))
+  ;                (cons (const "weblog") (string :tag "weblog id")))))
+  :type '(alist :key-type string :value-type (alist :key-type string :value-type string :options ("user" "server-url" "weblog"))))
+;:type '(repeat (alist :key-type 'string :value-type 'alist)))
 
 (defcustom weblogger-blogger-firstline-title nil
-  "Look for the title in the first line surrounded by <title> tags when using the Blogger API."
+  "Look for the title in the first line surrounded by <title>
+tags when using the Blogger API."
   :group 'weblogger
   :type 'boolean)
 
 (defvar weblogger-config-name "default"
-  "Name of  the default configuration.")
+  "Name of the default configuration.")
 
 (defvar weblogger-entry-list nil
   "List of weblog entries that we know about. Chronological
@@ -289,7 +332,7 @@ aggregators know that you have updated.")
   "Known capabilities of the remote host")
 
 (defvar weblogger-default-title ""
-  "The Default title to use when making an entry.  This is added
+  "The default title to use when making an entry.  This is added
 if your weblog server supports titles on entries but you haven't
 set one.  Set to \"\" for no title.")
 
@@ -299,15 +342,17 @@ added if your weblog server supports categories on entries but you
 haven't set one.  Set to nil for no category.")
 
 (defvar weblogger-default-tags nil
-  "The default list of tags when making an entry. This is added if 
-your weblog server supports tags on entries but you aven't set one.
-Set to nil for no tags.")
+  "The default list of tags when making an entry. This is added
+if your weblog server supports tags on entries but you haven't
+set one.  Set to nil for no tags.")
 
-;; Here are the four functions that need to be implemented.
+;; Here are the five functions that need to be implemented to support
+;; other blogs.
 (defvar weblogger-api-new-entry nil)
 (defvar weblogger-api-send-edits nil)
 (defvar weblogger-api-list-entries nil)
 (defvar weblogger-api-list-categories nil)
+(defvar weblogger-api-delete-entry nil)
 
 (defvar weblogger-weblog-alist nil
   "Weblogs the user can use on the server.")
@@ -318,8 +363,6 @@ Set to nil for no tags.")
 
 (defconst weblogger-version "1.6"
   "Current version of weblogger.el")
-
-(defvar use-gdata t)
 
 (unless weblogger-entry-mode-map
   (setq weblogger-entry-mode-map
@@ -366,6 +409,7 @@ Set to nil for no tags.")
         ["--" nil nil]
         ["Change Weblog"    weblogger-change-weblog t])))
 
+;; Interactive not implemented correctly here.
 (defun weblogger-select-configuration (&optional config)
   "Select a previously saved configuration."
   (interactive)
@@ -431,13 +475,8 @@ Set to nil for no tags.")
 the filename in weblogger-config-file."
   (customize-save-variable 'weblogger-config-alist
                            weblogger-config-alist))
-;;   (save-excursion
-;;     (set-buffer (find-file weblogger-config-file))
-;;     (erase-buffer)
-;;     (insert "(setq weblogger-config-alist")
-;;     (print weblogger-config-alist 'insert)
-;;     (insert ")\n")))
 
+;; The interactive needs to be rewritten.
 (defun weblogger-change-server ()
   "Change the server-url."
   (interactive)
@@ -554,8 +593,7 @@ available."
                     (if (stringp (cdr (assoc  "entry-id" entry)))
                         (cdr (assoc  "entry-id" entry))
                         (int-to-string (cdr (assoc  "entry-id" entry))))))
-        (content  (or (cdr (assoc "content"     entry))
-                      ""))
+        (content  (or (cdr (assoc "content"     entry)) ""))
         (title    (cdr (assoc "title"       entry))))
 
     (mapcar 'message-add-header
@@ -625,7 +663,6 @@ for the weblog to use."
   (weblogger-save-entry t arg)
   (bury-buffer))
 
-
 (defun weblogger-save-entry (&optional publishp &optional arg)
   "Publish the current entry is publishp is set.  With optional
 argument, prompts for the weblog to use."
@@ -673,7 +710,7 @@ it."
 
 (defun weblogger-server-password (&optional prompt)
   "Get the password.  If you've not yet logged in then prompt for
-it"
+it."
   (setq weblogger-server-password
         (if (or prompt (not weblogger-server-password))
             (if weblogger-server-password
@@ -893,27 +930,29 @@ is set, then add it to the current index and go to that entry."
   (interactive)
   (weblogger-goto-entry +1 t))
 
+(defun weblogger-api-xmlrpc-delete-entry (struct)
+  (let* ((msgid (cdr (assoc "entry-id" struct))))
+    (xml-rpc-method-call
+     weblogger-server-url
+     'blogger.deletePost
+     weblogger-blogger-app-key
+     msgid
+     (weblogger-server-username)
+     (weblogger-server-password)
+     t)))
+
 (defun weblogger-delete-entry ()
   "Delete the entry."
   (interactive)
   (unless weblogger-ring-index
     (message "You must have an entry loaded first."))
-  (if (y-or-n-p "Do you really want to delete this entry? ")
-      (let* ((msgid (cdr 
-                     (assoc "entry-id" 
-                            (ring-ref weblogger-entry-ring 
-                                      weblogger-ring-index)))))
-        (xml-rpc-method-call
-         weblogger-server-url
-         'blogger.deletePost
-         weblogger-blogger-app-key
-         msgid
-         (weblogger-server-username)
-         (weblogger-server-password)
-         t))
-      (ring-remove weblogger-entry-ring weblogger-ring-index)
-      (weblogger-edit-entry
-       (ring-ref weblogger-entry-ring weblogger-ring-index))))
+  (when (y-or-n-p "Do you really want to delete this entry? ")
+      ;; I wonder why eval is used in the other ones and not funcall?
+    (funcall weblogger-api-delete-entry (ring-ref weblogger-entry-ring 
+                                                  weblogger-ring-index))
+    (ring-remove weblogger-entry-ring weblogger-ring-index)
+    (weblogger-edit-entry
+     (ring-ref weblogger-entry-ring weblogger-ring-index))))
 
 (defun weblogger-edit-entry (&optional entry)
   "Edit a entry.  If ENTRY is specified, then use that entry.
@@ -932,7 +971,10 @@ Otherwise, open a new entry."
       (message-goto-body) ;; If Subject exists, move cursor to message body
       (message-goto-subject)) ;; Else, drop cursor on Subject header
   (message-fetch-field "Keywords")
-  (pop-to-buffer *weblogger-entry*))
+  (pop-to-buffer *weblogger-entry*)
+  ;; We just set up this buffer, so it hasn't been modified.
+  (set-buffer-modified-p nil)
+  )
 
 (defun weblogger-response-to-struct (response)
   "Convert the result of the xml-rpc call to a structure we
@@ -947,9 +989,9 @@ like."
         (trackbacks  (cdr (assoc-ignore-case "mt_tb_ping_urls" response)))
         (textType    (cdr (assoc-ignore-case "mt_convert_breaks" response)))
         (url         (cdr (assoc-ignore-case "link" response)))
-        (description (assoc-ignore-case "description" response))
-        (extended     (assoc-ignore-case "mt_text_more" response))
-        (mt_keywords        (cdr (assoc-ignore-case "mt_keywords" response)))
+        (description      (assoc-ignore-case "description" response))
+        (extended         (assoc-ignore-case "mt_text_more" response))
+        (mt_keywords (cdr (assoc-ignore-case "mt_keywords" response)))
         (categories  (cdr (assoc-ignore-case "categories" response))))
     
     (cond (content
@@ -1018,11 +1060,11 @@ like."
          (assoc "dateCreated"  entry)
          (cons "mt_tb_ping_urls"   (cdr (assoc "trackbacks"  entry)))
          (cons "mt_convert_breaks" (weblogger-texttype-id-from-name
-                                    (cdr (assoc "texttype"    entry))))
+                                   (cdr (assoc "texttype"    entry))))
          (cons "link"              (cdr (assoc "url"         entry)))
          (cons "description"       (cdr (assoc "content"     entry)))
-         (cons "categories"        (cdr (assoc "categories"     entry)))
-         (cons "mt_keywords"       (cdr (assoc "mt_keywords"         entry))))))
+         (cons "categories"        (cdr (assoc "categories"  entry)))
+         (cons "mt_keywords"       (cdr (assoc "mt_keywords" entry))))))
 
 (defun weblogger-server-userid ()
   "Get information on user."
