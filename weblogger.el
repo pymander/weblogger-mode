@@ -31,16 +31,17 @@
 ;;; Starting Out:
 ;;
 ;; If you don't yet have a weblog, you can set one up for free on
-;; various services.  
+;; various services mentioned above.
 ;;
-;;; Installation
+;;; Installation:
 ;;
-;; I use the following commands in my .emacs file:
+;; I use the following commands in my .emacs file to load up
+;; weblogger:
 ;;
 ;; (add-to-list 'load-path "/path/to/weblogger-directory")
 ;; (require 'weblogger)
 ;;
-;;; Setup
+;;; Setup:
 ;;
 ;; To set up your profile:
 ;;
@@ -120,7 +121,7 @@
   "IMPORTANT!  This stores the username, server, blog id, and
   password*.  The server is the name specified below in the
   Weblogger Servers.  The URL and other server specific
-  information is provided in the Weblogger Servers section.
+  information is provided in the Weblog Servers section.
 
 * If you're sure you want to store it in plaintext in your .emacs
   file.  It is not recommended."
@@ -153,6 +154,7 @@
 Configurations, a descrption, whether its XML-RPC or GData along
 with a URL, and whether it handles titles like Blogger's XML-RPC
 API, which is to place the title on the first line.  "
+  :tag "Weblog Servers"
   :type '(repeat (group 
                   (symbol :tag "Server")
                   (string :tag "Description")
@@ -1134,4 +1136,3 @@ internally).  If BUFFER is not given, use the current buffer."
 ;;  	tool-bar-map))))
 
 (provide 'weblogger)
-Weblog: gnufool

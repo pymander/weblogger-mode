@@ -6,4 +6,5 @@
    - If the server isn't reachable, (weblogger-determine-capabilities)
      will get the wrong information.
    - Changed titles aren't put in the weblogger post ring.
+** 
   
