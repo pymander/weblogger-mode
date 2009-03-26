@@ -6,5 +6,9 @@
    - If the server isn't reachable, (weblogger-determine-capabilities)
      will get the wrong information.
    - Changed titles aren't put in the weblogger post ring.
-** 
+** GData Bugs
+   - [ ] reformats the xml in a pretty-print fashion.  Not really what
+     I want.  Also, it only accepts xml with one root element.  A
+     workaround is to place a div there, but that shouldn't be a
+     user's concern.
   

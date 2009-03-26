@@ -832,9 +832,9 @@ re-queried for a list of weblogs the user owns"
       url
       'weblogUpdates.ping
       (weblogger-weblog-name-from-id 
-       (or id weblogger-weblog-id)				)
+       (or id (weblogger-weblog-id))				)
       (weblogger-server-url-from-id 
-       (or id weblogger-weblog-id))))
+       (or id (weblogger-weblog-id)))))
    weblogger-ping-urls))
 
 (defun weblogger-handle-weblog-ping-response (&optional resp)

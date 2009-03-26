@@ -29,6 +29,9 @@
   <app:draft>yes</app:draft>
 </app:control>")
 
+(defvar weblogger-gdata-category-tag 
+"<category scheme='http://www.blogger.com/atom/ns#' term=''/>")
+
 ;; defsubst is an inline function.
 
 (defun gblogger-auth-handle ()
@@ -68,11 +71,13 @@ STRUCT.  If PUBLISHP is non-nil, publishes the entry as well."
          (categories (cdr (assoc "categories" struct)))
          )
     (save-excursion
+      ;(setq last-content content)
       (weblogger-gdata-change-title entry title)
       (weblogger-gdata-change-content entry content)
       (weblogger-gdata-change-labels entry categories)
       (weblogger-gdata-set-draft entry (if publishp "no" "yes"))
       (weblogger-gdata-elisp-to-xml entry xml-buffer)
+      (setq last-entry entry)
       (set-buffer xml-buffer)
       (g-app-publish)
       )   
@@ -85,14 +90,9 @@ STRUCT.  If PUBLISHP is non-nil, publishes the entry as well."
   (set-buffer-modified-p nil))
 
 (defun weblogger-gdata-change-labels (entry labels)
-  (let* ((term (assoc 'term (cadar (xml-get-children last-entry 'category))))
+  (let* ((term (assoc 'term (cadar (xml-get-children entry 'category))))
          (labels-string (mapconcat #'identity labels ", ")))
     (and term (setcdr term labels-string))))
-
-(defun weblogger-gdata-xml-parse-string (string)
-  (with-temp-buffer
-    (insert string)
-    (xml-parse-region (point-min) (point-max))))
 
 (defun weblogger-gdata-change-content (entry content)
   "Accepts the lispml entry and a string of content."
@@ -101,11 +101,6 @@ STRUCT.  If PUBLISHP is non-nil, publishes the entry as well."
          )
     (setcdr old-content lispml)))
 
-(defun weblogger-gdata-elisp-to-xml (elisp buffer)
-  (save-excursion
-    (set-buffer (get-buffer-create buffer))
-    (erase-buffer)
-    (xml-debug-print-internal elisp " ")))
 
 (defun weblogger-gdata-get-post-url ()
   (let* ((buffer (g-app-get-entry (gblogger-auth-handle) gblogger-base-url))
@@ -113,7 +108,7 @@ STRUCT.  If PUBLISHP is non-nil, publishes the entry as well."
          (entries (xml-get-children feed 'entry))
          (links (weblogger-gdata-get-links (car entries))))
     (if (> (length entries) 1)
-        (message "can't handle multiple blogger blogs yet"))
+        (errors "can't handle multiple blogger blogs yet"))
     (cdr (assoc "post" links))))
          
 (defun weblogger-api-gdata-new-entry (struct publishp)
@@ -125,8 +120,8 @@ entry as well."
          (categories (cdr (assoc "categories" struct)))
          (xml-buffer (gblogger-new-entry post-url title))
          (entry      (car (parse-xml-buffer xml-buffer))))
-    (setq last-xml-buffer xml-buffer)
-    (setq last-entry entry)
+    ;(setq last-xml-buffer xml-buffer)
+    ;(setq last-entry entry)
     (weblogger-gdata-change-title entry title)
     (weblogger-gdata-change-content entry content)
     (weblogger-gdata-change-labels entry categories)
@@ -281,5 +276,65 @@ of that ENTRY."
 (defun weblogger-gdata-get-date (entry)
   (let* ((published (car (xml-get-children entry 'published))))
     (caddr published)))
+
+(defun weblogger-gdata-xml-parse-string (string)
+  (with-temp-buffer
+    (insert string)
+    (xml-parse-region (point-min) (point-max))))
+
+(defun weblogger-gdata-elisp-to-xml (elisp buffer)
+  (save-excursion
+    (set-buffer (get-buffer-create buffer))
+    (erase-buffer)
+    ;(xml-debug-print-internal elisp " ")
+    ;(xml-print (list elisp) "   ")
+    (weblogger-xml-print-internal elisp "")
+    buffer
+    ))
+
+;; These are both from xml.el slightly modified
+(defun weblogger-xml-print (xml &optional indent-string)
+  "Outputs the XML in the current buffer.
+XML can be a tree or a list of nodes.
+The first line is indented with the optional INDENT-STRING."
+  (setq indent-string (or indent-string ""))
+  (dolist (node xml)
+    (weblogger-xml-print-internal node indent-string)))
+
+(defun weblogger-xml-print-internal  (xml indent-string)
+  "Outputs the XML tree in the current buffer.
+The first line is indented with INDENT-STRING."
+  (let ((tree xml)
+	attlist)
+    (insert indent-string ?< (symbol-name (xml-node-name tree)))
+
+    ;;  output the attribute list
+    (setq attlist (xml-node-attributes tree))
+    (while attlist
+      (insert ?\  (symbol-name (caar attlist)) "=\"" (cdar attlist) ?\")
+      (setq attlist (cdr attlist)))
+
+    (setq tree (xml-node-children tree))
+
+    (if (null tree)
+	(insert ?/ ?>)
+      (insert ?>)
+
+      ;;  output the children
+      (dolist (node tree)
+	(cond
+	 ((listp node)
+;	  (insert ?\n)
+      ;; No automagical indenting, please.
+	  (weblogger-xml-print-internal node (concat indent-string "")))
+	 ((stringp node) (insert node))
+	 (t
+	  (error "Invalid XML tree"))))
+
+      (when (not (and (null (cdr tree))
+		      (stringp (car tree))))
+;	(insert ?\n indent-string)
+        )
+      (insert ?< ?/ (symbol-name (xml-node-name xml)) ?>))))
 
 (provide 'weblogger-gdata)

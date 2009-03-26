@@ -60,4 +60,5 @@
    - [X] fix the documentation
    - [X] Need to fix all the my-* functions to become
      weblogger-gdata-* functions.
-         
+   - [ ] How do you make HTML come through?
+   - [ ] categories not working if there were none to begin with
