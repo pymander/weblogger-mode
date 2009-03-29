@@ -67,11 +67,9 @@ Keymaps
     
     C-c C-t a  -- edit the Archive Index template
     
-    C-c C-s s  -- Change the server being used.
+    C-c C-w    -- Change the weblog.
     
-    C-c C-s w  -- Change the weblog.
-    
-    C-c C-s u  -- Change the user (re-login).
+    C-c C-u    -- Change the user (re-login).
 
  See the TODO and BUGS file to see the currently issues and
  potential features.

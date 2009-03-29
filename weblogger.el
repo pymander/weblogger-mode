@@ -85,11 +85,9 @@
 ;;
 ;; C-c C-t a  -- edit the Archive Index template
 ;;
-;; C-c C-s s  -- Change the server being used.
+;; C-c C-w    -- Change the weblog.
 ;;
-;; C-c C-s w  -- Change the weblog.
-;;
-;; C-c C-s u  -- Change the user (re-login).
+;; C-c C-u    -- Change the user (re-login).
 ;;
 ;; See the TODO and BUGS file to see the currently issues and
 ;; potential features.
@@ -331,7 +329,6 @@ server.  There may be a server-side limitation to this number."
           (define-key template-map "m" 'weblogger-edit-main-template)
           (define-key template-map "a" 'weblogger-edit-archive-template)
           (define-key map "\C-c\C-t" template-map)
-;          (define-key map "\C-c\C-o" 'weblogger-change-server)
           (define-key map "\C-c\C-w" 'weblogger-change-weblog)
           (define-key map "\C-c\C-u" 'weblogger-change-user)
           map)))
