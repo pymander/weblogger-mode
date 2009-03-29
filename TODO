@@ -63,4 +63,7 @@
      weblogger-gdata-* functions.
    - [ ] How do you make HTML come through?
    - [X] categories not working if there were none to begin with
-   - [ ] don't show the *atom entry* buffer after a send
+   - [X] don't show the *atom entry* buffer after a send
+         - [ ] g-app is still kind of poking through with its messages.
+   - [ ] do I need to host g-client because of my changes?
+   - [ ] need to write README.md for github
