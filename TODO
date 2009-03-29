@@ -17,6 +17,7 @@
          Looks like this is partially implemented.
 ** Possible Features
 *** *Buffer List* for blog entries
+*** Markdown integration and others (Textile, etc.)
 *** discover server
     Here's the idea:
 
@@ -39,7 +40,7 @@
    - [X] save as draft, but don't publish
          - [X] can you go back to a draft after you've published it?
    - [X] move all the e-blog code out
-   - [ ] what about the gblogger and g-client code?  
+   - [X] what about the gblogger and g-client code?  
          Am I go to base it on top of gblogger? or just g-app?
 
          I see two choices, either I can rip the UI and stick it into
@@ -53,7 +54,7 @@
    - [X] get the post url correctly
    - [X] get the right query url.
    - [X] stick it into github
-   - [ ] announce
+   - [ ] announce on emacswiki
    - [X] test it with an xmlrpc blog to make sure it still works
          I'm testing it with my livejournal account, and it does work.
    - [X] drafts aren't being pulled up.  fix it. 
@@ -61,4 +62,5 @@
    - [X] Need to fix all the my-* functions to become
      weblogger-gdata-* functions.
    - [ ] How do you make HTML come through?
-   - [ ] categories not working if there were none to begin with
+   - [X] categories not working if there were none to begin with
+   - [ ] don't show the *atom entry* buffer after a send

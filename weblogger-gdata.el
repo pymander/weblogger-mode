@@ -77,11 +77,11 @@ STRUCT.  If PUBLISHP is non-nil, publishes the entry as well."
       (weblogger-gdata-change-labels entry categories)
       (weblogger-gdata-set-draft entry (if publishp "no" "yes"))
       (weblogger-gdata-elisp-to-xml entry xml-buffer)
-      (setq last-entry entry)
+      ;(setq last-entry entry)
       (set-buffer xml-buffer)
-      (g-app-publish)
+      (funcall g-app-publish-action)
       )   
-    (set-buffer buffer)
+    (switch-to-buffer buffer)
     (set-buffer-modified-p nil)
   ))
 
@@ -89,18 +89,48 @@ STRUCT.  If PUBLISHP is non-nil, publishes the entry as well."
   (interactive)
   (set-buffer-modified-p nil))
 
-(defun weblogger-gdata-change-labels (entry labels)
-  (let* ((term (assoc 'term (cadar (xml-get-children entry 'category))))
-         (labels-string (mapconcat #'identity labels ", ")))
-    (and term (setcdr term labels-string))))
+(defun weblogger-xml-remove-children (entry tag)
+  (let ((new-kids (weblogger-gdata-filter (lambda (child) 
+                                            (not (and (listp child) (equal tag (car child)))) )
+                                          (xml-node-children entry))))
+    (cons (car entry) (cons (cadr entry) new-kids))))
+        
+
+(defun weblogger-gdata-filter (condp lst)
+  "A filter function in elisp."
+    (delq nil (mapcar (lambda (x) (and (funcall condp x) x)) lst)))
+
+(defun weblogger-gdata-unfilter (condp lst)
+  "A filter function in elisp."
+  (weblogger-gdata-filter (lambda (x) (not (funcall condp x))) lst))
+
+(defun weblogger-gdata-category-tag-for (label)
+  (let* ((category-tag (weblogger-gdata-xml-parse-string weblogger-gdata-category-tag))
+         (term (assoc 'term (cadar category-tag)))
+         )
+    (setcdr term label)
+    category-tag))
+
+(defun weblogger-gdata-change-labels (entry labels &optional recur)
+  (let* ((terms (mapcar (lambda (cat) (assoc 'term (cadr cat))) 
+                     (xml-get-children entry 'category)))
+         (tags (apply 'append (mapcar 'weblogger-gdata-category-tag-for labels)))
+         (new-entry (weblogger-xml-remove-children entry 'category))
+         ;(labels-string (mapconcat #'identity labels ", "))
+         )
+    (setcdr entry (cdr (append new-entry tags)))
+    entry
+    ))
 
 (defun weblogger-gdata-change-content (entry content)
   "Accepts the lispml entry and a string of content."
   (let* ((old-content (cdar (xml-get-children entry 'content)))
-         (lispml (or (weblogger-gdata-xml-parse-string content) (list content)))
+         ;; I don't recall what this "or" is good for.
+         (lispml (or (weblogger-gdata-xml-parse-string-fragment content) (list content))) 
+         ;(lispml (list content))  ;; Maybe this is the best way to go rather than
+         ;; actually doing any xml parsing on the entry text.  
          )
     (setcdr old-content lispml)))
-
 
 (defun weblogger-gdata-get-post-url ()
   (let* ((buffer (g-app-get-entry (gblogger-auth-handle) gblogger-base-url))
@@ -127,7 +157,9 @@ entry as well."
     (weblogger-gdata-change-labels entry categories)
     (weblogger-gdata-set-draft entry (if publishp "no" "yes"))
     (weblogger-gdata-elisp-to-xml entry xml-buffer)
-    (g-app-publish)     
+    (save-excursion
+      (set-buffer xml-buffer)
+      (funcall g-app-publish-action))
     (set-buffer-modified-p nil)
   ))
 
@@ -281,6 +313,9 @@ of that ENTRY."
   (with-temp-buffer
     (insert string)
     (xml-parse-region (point-min) (point-max))))
+
+(defun weblogger-gdata-xml-parse-string-fragment (string)
+  (xml-node-children (car (weblogger-gdata-xml-parse-string (concat "<div>" string "</div>")))))
 
 (defun weblogger-gdata-elisp-to-xml (elisp buffer)
   (save-excursion
