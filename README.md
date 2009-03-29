@@ -79,11 +79,4 @@ Keymaps
 Screenshot
 ----------
 
-<pre style='color: #bebebe; background-color: #262626; font-size: 8pt; width: 80em;'>
-<span style='color: #add8e6;'>Subject:</span> <span style='color: #e0ffff; font-weight: bold;'>weblogger.el v2.0</span>
-<span style='color: #add8e6;'>Keywords:</span> <span style='color: #66cdaa;'>emacs blog weblogger</span>
-<span style='color: #add8e6;'>From:</span> <span style='color: #66cdaa;'>shane.celis@gmail.com</span>
-<span style='color: #add8e6;'>Weblog:</span> <span style='color: #66cdaa;'>gnufool</span>
-<span style='color: #d2691e;'>--text follows this line--</span>
-I worked with &lt;a href='http://code.google.com/p/e-blog/'&gt;e-blog&lt;/a&gt; for...
-</pre>
+![screenshot](screenshot.png)
