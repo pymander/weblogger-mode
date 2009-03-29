@@ -79,4 +79,4 @@ Keymaps
 Screenshot
 ----------
 
-![screenshot](screenshot.png)
+![screenshot](http://gnufoo.org/weblogger/screenshot.png)
