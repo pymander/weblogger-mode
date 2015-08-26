@@ -600,9 +600,9 @@ called with the result as parameter."
   (let* ((m-name (if (stringp method)
 		     method
 		   (symbol-name method)))
-	 (m-params (mapcar '(lambda (p)
-			      `(param nil ,(car (xml-rpc-value-to-xml-list
-						 p))))
+	 (m-params (mapcar #'(lambda (p)
+                               `(param nil ,(car (xml-rpc-value-to-xml-list
+                                                  p))))
 			   (if async-callback-func
 			       params
 			     (car-safe params))))
